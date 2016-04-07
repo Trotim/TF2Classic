@@ -113,6 +113,16 @@ int	CTFWeaponBaseGrenadeProj::GetDamageType()
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+float CTFWeaponBaseGrenadeProj::GetDamageRadius( void )
+{
+	float flRadius = BaseClass::GetDamageRadius();
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( m_hLauncher.Get(), flRadius, mult_explosion_radius );
+	return flRadius;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CTFWeaponBaseGrenadeProj::Precache( void )
 {
 	BaseClass::Precache();
@@ -318,8 +328,6 @@ void CTFWeaponBaseGrenadeProj::Explode( trace_t *pTrace, int bitsDamageType )
 	// Use the thrower's position as the reported position
 	Vector vecReported = GetThrower() ? GetThrower()->GetAbsOrigin() : vec3_origin;
 
-	CTakeDamageInfo info( this, GetThrower(), m_hLauncher, GetBlastForce(), GetAbsOrigin(), m_flDamage, bitsDamageType, 0, &vecReported );
-
 	float flRadius = GetDamageRadius();
 
 	if ( tf_grenade_show_radius.GetBool() )
@@ -327,7 +335,13 @@ void CTFWeaponBaseGrenadeProj::Explode( trace_t *pTrace, int bitsDamageType )
 		DrawRadius( flRadius );
 	}
 
-	RadiusDamage( info, vecOrigin, flRadius, CLASS_NONE, NULL );
+	CTFRadiusDamageInfo radiusInfo;
+	radiusInfo.info.Set( this, GetThrower(), m_hLauncher, GetBlastForce(), GetAbsOrigin(), m_flDamage, bitsDamageType, 0, &vecReported );
+	radiusInfo.m_vecSrc = vecOrigin;
+	radiusInfo.m_flRadius = flRadius;
+	radiusInfo.m_flSelfDamageRadius = 146.0f;
+
+	TFGameRules()->RadiusDamage( radiusInfo );
 
 	// Don't decal players with scorch.
 	if ( pTrace->m_pEnt && !pTrace->m_pEnt->IsPlayer() )

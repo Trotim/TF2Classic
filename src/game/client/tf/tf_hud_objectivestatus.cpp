@@ -2,7 +2,7 @@
 //
 // Purpose:
 //
-//=============================================================================//
+//=====================================================================================//
 
 #include "cbase.h"
 #include "hudelement.h"
@@ -459,26 +459,32 @@ void CTFHudTimeStatus::SetExtraTimePanels()
 	if ( !pTimer )
 		return;
 
-	if ( m_pSetupBG && m_pSetupLabel )
+	if ( m_pSetupLabel )
 	{
 		// get the time remaining (in seconds)
 		if ( pTimer )
 		{
 			bool bInSetup = TFGameRules()->InSetup();
-			m_pSetupBG->SetVisible( bInSetup );
+
+			if ( m_pSetupBG )
+				m_pSetupBG->SetVisible( bInSetup );
+
 			m_pSetupLabel->SetVisible( bInSetup );
 		}
 	}
 
 	// Set the Sudden Death panels to be visible
-	if ( m_pSuddenDeathBG && m_pSuddenDeathLabel )
+	if ( m_pSuddenDeathLabel )
 	{
 		bool bInSD = TFGameRules()->InStalemate();
-		m_pSuddenDeathBG->SetVisible( bInSD );
+
+		if ( m_pSuddenDeathBG )
+			m_pSuddenDeathBG->SetVisible( bInSD );
+
 		m_pSuddenDeathLabel->SetVisible( bInSD );
 	}
 
-	if ( m_pOvertimeBG && m_pOvertimeLabel )
+	if ( m_pOvertimeLabel )
 	{
 		bool bInOver = TFGameRules()->InOvertime();
 
@@ -489,7 +495,7 @@ void CTFHudTimeStatus::SetExtraTimePanels()
 
 		if ( bInOver )
 		{
-			if ( !m_pOvertimeBG->IsVisible() )
+			if ( m_pOvertimeBG && !m_pOvertimeBG->IsVisible() )
 			{
 				m_pOvertimeLabel->SetAlpha( 0 );
 				m_pOvertimeBG->SetAlpha( 0 );
@@ -497,36 +503,46 @@ void CTFHudTimeStatus::SetExtraTimePanels()
 				g_pClientMode->GetViewportAnimationController()->StartAnimationSequence( this, "OvertimeShow" ); 
 
 				// need to turn off the SuddenDeath images if they're on
-				m_pSuddenDeathBG->SetVisible( false );
+				if ( m_pSuddenDeathBG )
+					m_pSuddenDeathBG->SetVisible( false );
+
 				m_pSuddenDeathLabel->SetVisible( false );
 			}
 
-			m_pOvertimeBG->SetVisible( true );
+			if ( m_pOvertimeBG )
+				m_pOvertimeBG->SetVisible( true );
+
 			m_pOvertimeLabel->SetVisible( true );
 
 			CheckClockLabelLength( m_pOvertimeLabel, m_pOvertimeBG );
 		}
 		else
 		{
-			m_pOvertimeBG->SetVisible( false );
+			if ( m_pOvertimeBG )
+				m_pOvertimeBG->SetVisible( false );
+
 			m_pOvertimeLabel->SetVisible( false );
 		}
 	}
 
-	if ( m_pWaitingForPlayersBG && m_pWaitingForPlayersLabel )
+	if ( m_pWaitingForPlayersLabel )
 	{
 		bool bInWaitingForPlayers = TFGameRules()->IsInWaitingForPlayers();
-		m_pWaitingForPlayersBG->SetVisible( bInWaitingForPlayers );
+
 		m_pWaitingForPlayersLabel->SetVisible( bInWaitingForPlayers );
+
+		if ( m_pWaitingForPlayersBG )
+			m_pWaitingForPlayersBG->SetVisible( bInWaitingForPlayers );
 
 		if ( bInWaitingForPlayers )
 		{
 			// can't be waiting for players *AND* in setup at the same time
-			if ( m_pSetupBG && m_pSetupLabel )
-			{
-				m_pSetupBG->SetVisible( false );
+
+			if ( m_pSetupLabel )
 				m_pSetupLabel->SetVisible( false );
-			}
+
+			if ( m_pSetupBG )
+				m_pSetupBG->SetVisible( false );
 
 			CheckClockLabelLength( m_pWaitingForPlayersLabel, m_pWaitingForPlayersBG );
 		}
@@ -565,7 +581,7 @@ void CTFHudTimeStatus::ApplySchemeSettings( IScheme *pScheme )
 	m_pSuddenDeathLabel = dynamic_cast<CExLabel *>(FindChildByName("SuddenDeathLabel"));
 	m_pSuddenDeathBG = dynamic_cast<CTFImagePanel *>( FindChildByName( "SuddenDeathBG" ) );
 
-	m_pWaitingForPlayersLabel = dynamic_cast<CExLabel *>(FindChildByName("WaitingForPlayersLabel"));
+	m_pWaitingForPlayersLabel = dynamic_cast<CExLabel *>( FindChildByName("WaitingForPlayersLabel") );
 	m_pWaitingForPlayersBG = dynamic_cast<CTFImagePanel *>( FindChildByName("WaitingForPlayersBG" ) );
 
 	m_pSetupLabel = dynamic_cast<CExLabel *>(FindChildByName("SetupLabel"));
@@ -774,9 +790,9 @@ void CTFHudObjectiveStatus::SetVisiblePanels( void )
 		{
 		case TF_GAMETYPE_CTF:
 			// turn on the flag panel
-			if (m_pFlagPanel && !m_pFlagPanel->IsVisible())
+			if ( m_pFlagPanel && !m_pFlagPanel->IsVisible() )
 			{
-				m_pFlagPanel->SetVisible(true);
+				m_pFlagPanel->SetVisible( true );
 			}
 			return;
 			break;
@@ -784,7 +800,7 @@ void CTFHudObjectiveStatus::SetVisiblePanels( void )
 		case TF_GAMETYPE_ARENA:
 		case TF_GAMETYPE_CP:
 			// turn on the control point icons
-			if (m_pControlPointIconsPanel && !m_pControlPointIconsPanel->IsVisible())
+			if ( m_pControlPointIconsPanel && !m_pControlPointIconsPanel->IsVisible() )
 			{
 				m_pControlPointIconsPanel->SetVisible(true);
 			}
@@ -820,7 +836,7 @@ void CTFHudObjectiveStatus::SetVisiblePanels( void )
 	{
 		case TF_GAMETYPE_CTF:
 			// turn on the flag panel
-			if (m_pFlagPanel && !m_pFlagPanel->IsVisible())
+			if ( m_pFlagPanel && !m_pFlagPanel->IsVisible() )
 			{
 				m_pFlagPanel->SetVisible(true);
 			}
@@ -833,6 +849,16 @@ void CTFHudObjectiveStatus::SetVisiblePanels( void )
 			{
 				m_pControlPointIconsPanel->SetVisible(true);
 			}
+
+			if ( TFGameRules() && TFGameRules()->IsInHybridCTF_CPMode() )
+			{
+				// turn on the flag panel
+				if ( m_pFlagPanel && !m_pFlagPanel->IsVisible() )
+				{
+					m_pFlagPanel->SetVisible( true );
+				}
+			}
+
 			break;
 
 		case TF_GAMETYPE_ESCORT:
@@ -862,20 +888,21 @@ void CTFHudObjectiveStatus::SetVisiblePanels( void )
 void CTFHudObjectiveStatus::TurnOffPanels()
 {
 	// turn off the flag panel
-	if (m_pFlagPanel && m_pFlagPanel->IsVisible())
+	if ( m_pFlagPanel && m_pFlagPanel->IsVisible() )
 	{
-		m_pFlagPanel->SetVisible(false);
+		m_pFlagPanel->SetVisible( false );
 	}
 
 	// turn off the control point icons
-	if (m_pControlPointIconsPanel && m_pControlPointIconsPanel->IsVisible())
+	if ( m_pControlPointIconsPanel && m_pControlPointIconsPanel->IsVisible() )
 	{
-		m_pControlPointIconsPanel->SetVisible(false);
+		m_pControlPointIconsPanel->SetVisible( false );
 	}
-	// turn off the flag panel
-	if (m_pDMPanel && m_pDMPanel->IsVisible())
+
+	// turn off the DM score panel
+	if ( m_pDMPanel && m_pDMPanel->IsVisible()  )
 	{
-		m_pDMPanel->SetVisible(false);
+		m_pDMPanel->SetVisible( false );
 	}
 }
 
@@ -912,7 +939,7 @@ void CTFHudObjectiveStatus::Think()
 				int iActiveTimer = ObjectiveResource()->GetTimerToShowInHUD();
 
 				pTimer = dynamic_cast< CTeamRoundTimer* >( ClientEntityList().GetEnt( iActiveTimer ) );
-				bDisplayTimer = ( iActiveTimer != 0 && pTimer && !pTimer->IsDormant() );
+				bDisplayTimer = ( iActiveTimer != 0 && pTimer && !pTimer->IsDormant() && pTimer->ShowInHud() );
 
 				if ( bDisplayTimer )
 					m_pTimePanel->SetTimerIndex( iActiveTimer );
@@ -955,6 +982,11 @@ CTFHudKothTimeStatus::CTFHudKothTimeStatus( const char *pElementName ) : CHudEle
 	m_pBlueKothTimer->m_iTeamIndex = TF_TEAM_BLUE;
 	m_pRedKothTimer = new CTFHudTimeStatus( this, "RedTimer" );
 	m_pRedKothTimer->m_iTeamIndex = TF_TEAM_RED;
+	m_pGreenKothTimer = new CTFHudTimeStatus( this, "GreenTimer" );
+	m_pGreenKothTimer->m_iTeamIndex = TF_TEAM_GREEN;
+	m_pYellowKothTimer = new CTFHudTimeStatus( this, "YellowTimer" );
+	m_pYellowKothTimer->m_iTeamIndex = TF_TEAM_YELLOW;
+
 	m_pActiveTimerBG = new ImagePanel( this, "ActiveTimerBG" );
 
 	RegisterForRenderGroup( "mid" );
@@ -969,6 +1001,9 @@ void CTFHudKothTimeStatus::ApplySchemeSettings( vgui::IScheme *pScheme )
 	LoadControlSettings( "resource/UI/HudObjectiveKothTimePanel.res" );
 
 	BaseClass::ApplySchemeSettings( pScheme );
+
+	// Shitty hack
+	m_nOriginalActiveTimerBGYPos = m_pActiveTimerBG->GetYPos();
 }
 
 //-----------------------------------------------------------------------------
@@ -981,6 +1016,12 @@ void CTFHudKothTimeStatus::Reset( void )
 
 	if ( m_pRedKothTimer )
 		m_pRedKothTimer->Reset();
+
+	if ( m_pGreenKothTimer )
+		m_pGreenKothTimer->Reset();
+	
+	if ( m_pYellowKothTimer )
+		m_pYellowKothTimer->Reset();
 
 	UpdateActiveTeam();
 }
@@ -1012,14 +1053,24 @@ void CTFHudKothTimeStatus::UpdateActiveTeam( void )
 		if ( m_pActiveKothTimerPanel )
 		{
 			m_pActiveTimerBG->SetVisible( true );
-			if ( m_pActiveKothTimerPanel->m_iTeamIndex == TF_TEAM_BLUE)
+
+			if ( m_pActiveKothTimerPanel->m_iTeamIndex == TF_TEAM_BLUE )
 			{
-				m_pActiveTimerBG->SetPos( m_nBlueActiveXPos, m_pActiveTimerBG->GetYPos() );
+				m_pActiveTimerBG->SetPos( m_nBlueActiveXPos, m_nOriginalActiveTimerBGYPos );
 			}
-			else if  (m_pActiveKothTimerPanel->m_iTeamIndex == TF_TEAM_RED )
+			else if  ( m_pActiveKothTimerPanel->m_iTeamIndex == TF_TEAM_RED )
 			{
-				m_pActiveTimerBG->SetPos( m_nRedActiveXPos, m_pActiveTimerBG->GetYPos() );
+				m_pActiveTimerBG->SetPos( m_nRedActiveXPos, m_nOriginalActiveTimerBGYPos );
 			}
+			else if ( m_pActiveKothTimerPanel->m_iTeamIndex == TF_TEAM_GREEN )
+			{
+				m_pActiveTimerBG->SetPos( m_nGreenActiveXPos, m_nGreenActiveYPos );
+			}
+			else if ( m_pActiveKothTimerPanel->m_iTeamIndex == TF_TEAM_YELLOW )
+			{
+				m_pActiveTimerBG->SetPos( m_nYellowActiveXPos, m_nYellowActiveYPos );
+			}
+			
 			g_pClientMode->GetViewportAnimationController()->StartAnimationSequence( this, "ActiveTimerBGPulse" );
 		}
 		else
@@ -1048,6 +1099,8 @@ void CTFHudKothTimeStatus::Think( void )
 		{
 			bool bDisplayBlueTimer = false;
 			bool bDisplayRedTimer = false;
+			bool bDisplayGreenTimer = false;
+			bool bDisplayYellowTimer = false;
 
 			// is the time panel still pointing at an active timer?
 			CTeamRoundTimer *pTimer = dynamic_cast< CTeamRoundTimer* >( ClientEntityList().GetEnt( m_pBlueKothTimer->GetTimerIndex() ) );
@@ -1058,7 +1111,7 @@ void CTFHudKothTimeStatus::Think( void )
 			if ( !pTimer )
 			{
 				pTimer = TFGameRules()->GetBlueKothRoundTimer();
-				if ( pTimer )
+				if ( pTimer && m_pBlueKothTimer->GetTimerIndex() != pTimer->index )
 					m_pBlueKothTimer->SetTimerIndex( pTimer->index );
 			}
 
@@ -1078,7 +1131,7 @@ void CTFHudKothTimeStatus::Think( void )
 			if ( !pTimer )
 			{
 				pTimer = TFGameRules()->GetRedKothRoundTimer();
-				if ( pTimer )
+				if ( pTimer && m_pRedKothTimer->GetTimerIndex() != pTimer->index )
 					m_pRedKothTimer->SetTimerIndex( pTimer->index );
 			}
 
@@ -1091,16 +1144,77 @@ void CTFHudKothTimeStatus::Think( void )
 					pActiveKothTimerPanel = m_pRedKothTimer;
 			}
 
+			if ( TFGameRules()->IsFourTeamGame() )
+			{
+				// Check GRN timer
+				pTimer = dynamic_cast< CTeamRoundTimer* >( ClientEntityList().GetEnt( m_pGreenKothTimer->GetTimerIndex() ) );
+
+				if ( !pTimer )
+				{
+					pTimer = TFGameRules()->GetGreenKothRoundTimer();
+					if ( pTimer )
+						m_pGreenKothTimer->SetTimerIndex( pTimer->index );
+				}
+
+				if ( pTimer && !pTimer->IsDormant() && !pTimer->IsDisabled() )
+				{
+					// the current timer is fine, make sure the panel is visible
+					bDisplayGreenTimer = true;
+
+					if ( !pTimer->IsTimerPaused() )
+						pActiveKothTimerPanel = m_pGreenKothTimer;
+				}
+
+				// Check YLW timer
+				pTimer = dynamic_cast< CTeamRoundTimer* >( ClientEntityList().GetEnt( m_pYellowKothTimer->GetTimerIndex() ) );
+
+				if ( !pTimer )
+				{
+					pTimer = TFGameRules()->GetYellowKothRoundTimer();
+					if ( pTimer )
+						m_pYellowKothTimer->SetTimerIndex( pTimer->index );
+				}
+
+				if ( pTimer && !pTimer->IsDormant() && !pTimer->IsDisabled() )
+				{
+					// the current timer is fine, make sure the panel is visible
+					bDisplayYellowTimer = true;
+
+					if ( !pTimer->IsTimerPaused() )
+						pActiveKothTimerPanel = m_pYellowKothTimer;
+				}
+			}
+
 			if ( !m_pBlueKothTimer->IsVisible() || !m_pRedKothTimer->IsVisible() )
 			{
 				m_pBlueKothTimer->SetVisible( true ); // bDisplayBlueTimer
 				m_pRedKothTimer->SetVisible( true ); // bDisplayRedTimer
 
 				// If our spectator GUI is visible, invalidate its layout so that it moves the reinforcement label
-				if (g_pSpectatorGUI)
+				if ( g_pSpectatorGUI )
 				{
 					g_pSpectatorGUI->InvalidateLayout();
 				}
+			}
+
+			if ( TFGameRules()->IsFourTeamGame() )
+			{
+				if ( !m_pGreenKothTimer->IsVisible() || !m_pYellowKothTimer->IsVisible() )
+				{
+					m_pGreenKothTimer->SetVisible( true ); 
+					m_pYellowKothTimer->SetVisible( true );
+
+					// If our spectator GUI is visible, invalidate its layout so that it moves the reinforcement label
+					if ( g_pSpectatorGUI )
+					{
+						g_pSpectatorGUI->InvalidateLayout();
+					}
+				}
+			}
+			else
+			{
+				m_pGreenKothTimer->SetVisible( false ); 
+				m_pYellowKothTimer->SetVisible( false );
 			}
 
 			// Set overtime panels active on our active panel (if needed)
@@ -1118,6 +1232,9 @@ void CTFHudKothTimeStatus::Think( void )
 		{
 			m_pBlueKothTimer->SetVisible( false );
 			m_pRedKothTimer->SetVisible( false );
+			m_pGreenKothTimer->SetVisible( false );
+			m_pYellowKothTimer->SetVisible( false );
+
 			m_pActiveTimerBG->SetVisible( false );
 		}
 	}

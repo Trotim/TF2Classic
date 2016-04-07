@@ -17,6 +17,8 @@
 #include <vgui_controls/EditablePanel.h>
 #include <vgui_controls/ProgressBar.h>
 #include "engine/IEngineSound.h"
+#include <vgui_controls/AnimationController.h>
+#include "iclientmode.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -177,18 +179,26 @@ bool CDamageAccountPanel::ShouldDraw( void )
 void CDamageAccountPanel::OnDamaged( IGameEvent *event )
 {
 	C_TFPlayer *pPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( pPlayer && pPlayer->IsAlive() && pPlayer->GetUserID() == event->GetInt( "attacker" ) ) // Did we shoot the guy?
+	if ( pPlayer && pPlayer->IsAlive() ) 
 	{
-		int iAttacker = engine->GetPlayerForUserID( event->GetInt( "attacker" ) );
-		int iVictim = engine->GetPlayerForUserID( event->GetInt( "userid" ) );
+		int iAttacker = event->GetInt( "attacker" );
+		int iVictim = event->GetInt( "userid" );
 		int iDmgAmount = event->GetInt( "damageamount" );
+
+		// Did we shoot the guy?
+		if ( iAttacker != pPlayer->GetUserID() )
+			return;
 
 		// No self-damage notifications.
 		if ( iAttacker == iVictim )
 			return;
 
+		// Don't show anything if no damage was done.
+		if ( iDmgAmount == 0 )
+			return;
+
 		// Currently only supporting players.
-		C_TFPlayer *pVictim = ToTFPlayer( UTIL_PlayerByIndex( iVictim ) );
+		C_TFPlayer *pVictim = ToTFPlayer( UTIL_PlayerByUserId( iVictim ) );
 
 		if ( !pVictim )
 			return;
@@ -215,11 +225,14 @@ void CDamageAccountPanel::OnDamaged( IGameEvent *event )
 
 				CLocalPlayerFilter filter;
 
-				CBaseEntity::EmitSound( filter, SOUND_FROM_LOCAL_PLAYER, params ); // Ding!
+				C_BaseEntity::EmitSound( filter, SOUND_FROM_LOCAL_PLAYER, params ); // Ding!
 
 				m_flLastHitSound = gpGlobals->curtime;
 			}
 		}
+
+		// Leftover from old code?
+		g_pClientMode->GetViewportAnimationController()->StartAnimationSequence( "DamagedPlayer" );
 
 		// Stop here if we chose not to show hit numbers.
 		if ( !hud_combattext.GetBool() )
@@ -227,10 +240,9 @@ void CDamageAccountPanel::OnDamaged( IGameEvent *event )
 
 		// Don't show the numbers if we can't see the victim.
 		trace_t tr;
-		UTIL_TraceLine( pPlayer->EyePosition(), pVictim->WorldSpaceCenter(), CONTENTS_SOLID|CONTENTS_MOVEABLE, NULL, COLLISION_GROUP_NONE, &tr );
+		UTIL_TraceLine( pPlayer->EyePosition(), pVictim->WorldSpaceCenter(), MASK_VISIBLE, NULL, COLLISION_GROUP_NONE, &tr );
 		if ( tr.fraction != 1.0f )
 			return;
-
 
 		if ( hud_combattext_batching.GetBool() )
 		{

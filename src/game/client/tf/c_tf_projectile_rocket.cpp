@@ -33,16 +33,6 @@ C_TFProjectile_Rocket::~C_TFProjectile_Rocket( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void C_TFProjectile_Rocket::OnPreDataChanged( DataUpdateType_t updateType )
-{
-	BaseClass::OnPreDataChanged( updateType );
-
-	m_iOldTeamNum = m_iTeamNum;
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
 void C_TFProjectile_Rocket::OnDataChanged( DataUpdateType_t updateType )
 {
 	BaseClass::OnDataChanged(updateType);
@@ -52,6 +42,7 @@ void C_TFProjectile_Rocket::OnDataChanged( DataUpdateType_t updateType )
 		CreateRocketTrails();		
 	}
 
+	// Watch team changes and change trail accordingly.
 	if ( m_iOldTeamNum && m_iOldTeamNum != m_iTeamNum )
 	{
 		ParticleProp()->StopEmission();
@@ -78,35 +69,13 @@ void C_TFProjectile_Rocket::CreateRocketTrails( void )
 
 	if ( m_bCritical )
 	{
-		if ( TFGameRules() && TFGameRules()->IsDeathmatch() )
-		{
-			C_TFPlayer *pPlayer = ToTFPlayer(GetOwnerEntity());
-			if (pPlayer)
-			{
-				pPlayer->m_Shared.SetParticleToMercColor(
-					ParticleProp()->Create("critical_rocket_dm", PATTACH_ABSORIGIN_FOLLOW)
-					);
-				return;
-			}
-			ParticleProp()->Create("critical_rocket_red", PATTACH_ABSORIGIN_FOLLOW);
-		}
+		const char *pszEffectName = ConstructTeamParticle( "critical_rocket_%s", GetTeamNumber(), true );
+		CNewParticleEffect *pParticle = ParticleProp()->Create( pszEffectName, PATTACH_ABSORIGIN_FOLLOW );
 
-		switch( GetTeamNumber() )
+		C_TFPlayer *pPlayer = ToTFPlayer( GetOwnerEntity() );
+		if ( pPlayer )
 		{
-		case TF_TEAM_RED:
-			ParticleProp()->Create("critical_rocket_red", PATTACH_ABSORIGIN_FOLLOW);
-			break;
-		case TF_TEAM_BLUE:
-			ParticleProp()->Create("critical_rocket_blue", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_GREEN:
-			ParticleProp()->Create("critical_rocket_green", PATTACH_ABSORIGIN_FOLLOW);
-			break;
-		case TF_TEAM_YELLOW:
-			ParticleProp()->Create("critical_rocket_yellow", PATTACH_ABSORIGIN_FOLLOW);
-			break;
-		default:
-			break;
+			pPlayer->m_Shared.SetParticleToMercColor( pParticle );
 		}
 	}
 }

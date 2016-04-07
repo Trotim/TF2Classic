@@ -28,6 +28,7 @@
 #include "tf_playeranimstate.h"
 #include "tf_weapon_parse.h"
 #include "npcevent.h"
+#include "econ_item_system.h"
 
 // Client specific.
 #if defined( CLIENT_DLL )
@@ -40,6 +41,7 @@
 #define MAX_TRACER_NAME		128
 
 CTFWeaponInfo *GetTFWeaponInfo(int iWeapon);
+CTFWeaponInfo *GetTFWeaponInfoForItem( int iItemID, int iClass );
 
 class CTFPlayer;
 class CBaseObject;
@@ -78,6 +80,13 @@ struct BobState_t
 	float m_flVerticalBob;
 	float m_flLateralBob;
 };
+
+typedef struct
+{
+	Activity actBaseAct;
+	Activity actTargetAct;
+	int		iWeaponRole;
+} viewmodel_acttable_t;
 
 #ifdef CLIENT_DLL
 float CalcViewModelBobHelper( CBasePlayer *player, BobState_t *pBobState );
@@ -128,6 +137,9 @@ class CTFWeaponBase : public CBaseCombatWeapon
 	virtual const char *GetViewModel( int iViewModel = 0 ) const;
 	virtual const char *DetermineViewModelType(const char *vModel) const;
 
+	// World model.
+	virtual const char *GetWorldModel( void ) const;
+
 #ifdef CLIENT_DLL
 	virtual void UpdateViewModel( void );
 #endif
@@ -139,6 +151,12 @@ class CTFWeaponBase : public CBaseCombatWeapon
 	virtual void Drop( const Vector &vecVelocity );
 	virtual bool Holster( CBaseCombatWeapon *pSwitchingTo = NULL );
 	virtual bool Deploy( void );
+	virtual void Equip( CBaseCombatCharacter *pOwner );
+	bool IsViewModelFlipped( void );
+
+	virtual void ReapplyProvision( void );
+	virtual void OnActiveStateChanged( int iOldState );
+	virtual void UpdateOnRemove( void );
 
 	// Attacks.
 	virtual void PrimaryAttack();
@@ -146,6 +164,12 @@ class CTFWeaponBase : public CBaseCombatWeapon
 	void CalcIsAttackCritical( void );
 	virtual bool CalcIsAttackCriticalHelper();
 	bool IsCurrentAttackACrit() { return m_bCurrentAttackIsCrit; }
+
+	// Ammo.
+	virtual int	GetMaxClip1( void ) const;
+	virtual int	GetDefaultClip1( void ) const;
+	virtual int GetMaxAmmo( void );
+	virtual int GetInitialAmmo( void );
 
 	// Reloads.
 	virtual bool Reload( void );
@@ -159,6 +183,7 @@ class CTFWeaponBase : public CBaseCombatWeapon
 
 	// Sound.
 	bool PlayEmptySound();
+	virtual const char *GetShootSound( int iIndex ) const;
 
 	// Activities.
 	virtual void ItemBusyFrame( void );
@@ -166,14 +191,20 @@ class CTFWeaponBase : public CBaseCombatWeapon
 
 	virtual void SetWeaponVisible( bool visible );
 
+	virtual int GetActivityWeaponRole( void );
+
 	virtual acttable_t *ActivityList( int &iActivityCount );
-	static acttable_t m_acttablePrimary[];
-	static acttable_t m_acttableSecondary[];
-	static acttable_t m_acttableMelee[];
-	static acttable_t m_acttableBuilding[];
-	static acttable_t m_acttablePDA[];
-	static acttable_t m_acttableItem1[];
-	static acttable_t m_acttableItem2[];
+	static acttable_t s_acttablePrimary[];
+	static acttable_t s_acttableSecondary[];
+	static acttable_t s_acttableMelee[];
+	static acttable_t s_acttableBuilding[];
+	static acttable_t s_acttablePDA[];
+	static acttable_t s_acttableItem1[];
+	static acttable_t s_acttableItem2[];
+	static acttable_t s_acttableMeleeAllClass[];
+	static acttable_t s_acttableSecondary2[];
+	static acttable_t s_acttablePrimary2[];
+	static viewmodel_acttable_t s_viewmodelacttable[];
 
 #ifdef GAME_DLL
 	virtual void	AddAssociatedObject( CBaseObject *pObject ) { }
@@ -185,7 +216,8 @@ class CTFWeaponBase : public CBaseCombatWeapon
 	CTFPlayer *GetTFPlayerOwner() const;
 
 #ifdef CLIENT_DLL
-	C_BaseEntity *GetWeaponForEffect();
+	bool			UsingViewModel( void );
+	C_BaseEntity	*GetWeaponForEffect();
 #endif
 
 	bool CanAttack( void );
@@ -230,6 +262,9 @@ class CTFWeaponBase : public CBaseCombatWeapon
 
 	// Ammo.
 	virtual const Vector& GetBulletSpread();
+
+	// On hit effects.
+	void ApplyOnHitAttributes( CTFPlayer *pVictim, const CTakeDamageInfo &info );
 
 // Client specific.
 #else
@@ -305,5 +340,32 @@ private:
 };
 
 #define WEAPON_RANDOM_RANGE 10000
+
+// Mercenary needs a different activity set for each weapon so use these in stock weapons code.
+#define DECLARE_DM_ACTTABLE()		static acttable_t m_acttable[];\
+	virtual Activity ActivityOverride( Activity baseAct, bool *pRequired ) OVERRIDE;
+
+#define IMPLEMENT_DM_ACTTABLE(className) \
+	Activity className::ActivityOverride( Activity baseAct, bool *pRequired )	\
+	{																			\
+		CTFPlayer *pOwner = GetTFPlayerOwner();									\
+		if ( pOwner && pOwner->IsPlayerClass( TF_CLASS_MERCENARY ) )			\
+		{																		\
+			int actCount = ARRAYSIZE( m_acttable );								\
+			for ( int i = 0; i < actCount; i++ )								\
+			{																	\
+				const acttable_t& act = m_acttable[i];							\
+				if ( baseAct == act.baseAct )									\
+				{																\
+					if ( pRequired )											\
+					{															\
+						*pRequired = act.required;								\
+					}															\
+					return (Activity)act.weaponAct;								\
+				}																\
+			}																	\
+		}																		\
+		return BaseClass::ActivityOverride( baseAct, pRequired );				\
+	}
 
 #endif // TF_WEAPONBASE_H

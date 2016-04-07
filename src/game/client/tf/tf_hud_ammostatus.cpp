@@ -35,7 +35,6 @@ using namespace vgui;
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
 
-
 DECLARE_HUDELEMENT( CTFHudWeaponAmmo );
 
 //-----------------------------------------------------------------------------
@@ -120,14 +119,21 @@ bool CTFHudWeaponAmmo::ShouldDraw( void )
 		return false;
 	}
 
-	CTFWeaponBase *pWeapon = pPlayer->GetActiveTFWeapon();
+	C_TFWeaponBase *pWeapon = pPlayer->GetActiveTFWeapon();
 
 	if ( !pWeapon )
 	{
 		return false;
 	}
 
-	if ( pWeapon->GetWeaponID() == TF_WEAPON_MEDIGUN || pWeapon->GetWeaponID() == TF_WEAPON_KRITZKRIEG || pWeapon->GetWeaponID() == TF_WEAPON_UBERSAW )
+	if ( !pWeapon->UsesPrimaryAmmo() && !tf2c_ammobucket.GetBool() )
+	{
+		return false;
+	}
+
+	CHudElement *pMedicCharge = GET_NAMED_HUDELEMENT( CHudElement, CHudMedicChargeMeter );
+
+	if ( pMedicCharge && pMedicCharge->ShouldDraw() )
 	{
 		return false;
 	}
@@ -184,28 +190,20 @@ void CTFHudWeaponAmmo::OnThink()
 	{
 		bool bShowIcon = false;
 
-		if ( tf2c_ammobucket.GetBool() && pWeapon )
+		if ( tf2c_ammobucket.GetBool() && pWeapon && m_pWeaponBucket )
 		{
-			// FIXME: need to add GRN and YLW icons to CTFWeaponInfo.
-			const CHudTexture *pTexture = pWeapon->GetSpriteInactive(); // red team
-			if ( pPlayer )
+			int iItemID = pWeapon->GetItemID();
+			CEconItemDefinition *pItemDefinition = GetItemSchema()->GetItemDefinition( iItemID );
+			if ( pItemDefinition )
 			{
-				if ( pPlayer->GetTeamNumber() == TF_TEAM_BLUE )
-				{
-					pTexture = pWeapon->GetSpriteActive();
-				}
-			}
-
-			if ( pTexture )
-			{
-				char szImage[64];
-				Q_snprintf( szImage, sizeof( szImage ), "../%s", pTexture->szTextureFile );
+				char szImage[128];
+				Q_snprintf (szImage, sizeof( szImage ), "../%s_large", pItemDefinition->image_inventory );
 				m_pWeaponBucket->SetImage( szImage );
 				bShowIcon = true;
 			}
 		}
-
-		m_pWeaponBucket->SetVisible( bShowIcon );
+		if ( m_pWeaponBucket )
+			m_pWeaponBucket->SetVisible( bShowIcon );
 
 		hudlcd->SetGlobalStat( "(weapon_print_name)", pWeapon ? pWeapon->GetPrintName() : " " );
 		hudlcd->SetGlobalStat( "(weapon_name)", pWeapon ? pWeapon->GetName() : " " );

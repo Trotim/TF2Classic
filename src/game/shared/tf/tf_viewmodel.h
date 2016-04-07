@@ -25,6 +25,14 @@
 #define CTFViewModel C_TFViewModel
 #endif
 
+enum
+{
+	VMTYPE_NONE = -1,	// Hasn't been set yet. We should never have this.
+	VMTYPE_HL2,			// HL2-Type vmodels. Hands, weapon and anims are in the same model. (Used in HL1, HL2, CS:S, DOD:S, pretty much any old-gen Valve game)
+	VMTYPE_TF2,			// TF2-Type cmodels. Hands are a separate model, anims are in the hands model. (Only used in live TF2)
+	VMTYPE_L4D			// L4D-Type vmodels. Hands are a separate model, anims are in the weapon model. (Used in L4D, L4D2, Portal 2, CS:GO)
+};
+
 class CTFViewModel : public CBaseViewModel
 {
 	DECLARE_CLASS( CTFViewModel, CBaseViewModel );
@@ -34,14 +42,6 @@ public:
 
 	CTFViewModel( void );
 	virtual ~CTFViewModel( void );
-
-	enum
-	{
-		VMTYPE_NONE = 0,	// Hasn't been set yet. We should never have this.
-		VMTYPE_HL2,			// HL2-Type vmodels. Hands, weapon and anims are in the same model. (Used in HL1, HL2, CS:S, DOD:S, pretty much any old-gen Valve game)
-		VMTYPE_L4D,			// L4D-Type vmodels. Hands are a separate model, anims are in the weapon model. (Used in L4D, L4D2, Portal 2, CS:GO)
-		VMTYPE_TF2			// TF2-Type cmodels. Hands are a separate model, anims are in the hands model. (Only used in live TF2)
-	};
 
 	virtual void CalcViewModelLag( Vector& origin, QAngle& angles, QAngle& original_angles );
 	virtual void CalcViewModelView( CBasePlayer *owner, const Vector& eyePosition, const QAngle& eyeAngles );
@@ -73,8 +73,7 @@ public:
 
 	virtual int DrawModel( int flags );
 
-	CHandle< C_ViewmodelAttachmentModel > m_viewmodelAddon;
-	char m_viewmodelAddonName[128];
+	CHandle< C_ViewmodelAttachmentModel > m_hViewmodelAddon;
 
 	void UpdateViewmodelAddon( const char *pszModelname );
 
@@ -86,6 +85,8 @@ public:
 	virtual bool			GetAttachment( int number, Vector &origin );
 	virtual	bool			GetAttachment( int number, Vector &origin, QAngle &angles );
 	virtual bool			GetAttachmentVelocity( int number, Vector &originVel, Quaternion &angleVel );
+
+	virtual void			FireEvent( const Vector& origin, const QAngle& angles, int event, const char *options );
 
 #endif
 

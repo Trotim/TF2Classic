@@ -10,13 +10,10 @@
 #endif
 
 #include "cbase.h"
+#include "baseprojectile.h"
 #include "tf_shareddefs.h"
-// Client specific.
-#ifdef CLIENT_DLL
-#include "c_baseanimating.h"
+#ifndef CLIENT_DLL
 // Server specific.
-#else
-#include "baseanimating.h"
 #include "smoke_trail.h"
 #endif
 
@@ -24,13 +21,13 @@
 #define CTFBaseRocket C_TFBaseRocket
 #endif
 
-#define TF_ROCKET_RADIUS	(110.0f * 1.1f)	//radius * TF scale up factor
+#define TF_ROCKET_RADIUS	146.0f	// Matches grenade radius.
 
 //=============================================================================
 //
 // TF Base Rocket.
 //
-class CTFBaseRocket : public CBaseAnimating
+class CTFBaseRocket : public CBaseProjectile
 {
 
 //=============================================================================
@@ -65,7 +62,11 @@ protected:
 public:
 
 	virtual int		DrawModel( int flags );
+	virtual void	OnPreDataChanged( DataUpdateType_t updateType );
 	virtual void	PostDataUpdate( DataUpdateType_t type );
+
+protected:
+	int		m_iOldTeamNum;
 
 private:
 
@@ -81,7 +82,7 @@ public:
 
 	DECLARE_DATADESC();
 
-	static CTFBaseRocket *Create( const char *szClassname, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL );	
+	static CTFBaseRocket *Create( CBaseEntity *pWeapon, const char *szClassname, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner = NULL );	
 
 	virtual void	RocketTouch( CBaseEntity *pOther );
 	virtual void	Explode( trace_t *pTrace, CBaseEntity *pOther );
@@ -89,7 +90,7 @@ public:
 	virtual float	GetDamage() { return m_flDamage; }
 	virtual int		GetDamageType() { return g_aWeaponDamageTypes[ GetWeaponID() ]; }
 	virtual void	SetDamage(float flDamage) { m_flDamage = flDamage; }
-	virtual float	GetRadius() { return TF_ROCKET_RADIUS; }	
+	virtual float	GetRadius();	
 	void			DrawRadius( float flRadius );
 
 	unsigned int	PhysicsSolidMaskForEntity( void ) const;

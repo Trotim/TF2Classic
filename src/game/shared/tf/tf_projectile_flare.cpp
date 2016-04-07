@@ -81,6 +81,8 @@ void CTFProjectile_Flare::Spawn()
 {
 	SetModel( TF_WEAPON_FLARE_MODEL );
 	BaseClass::Spawn();
+	SetMoveType( MOVETYPE_FLYGRAVITY, MOVECOLLIDE_FLY_CUSTOM );
+	SetGravity( 0.3f );
 }
 
 //-----------------------------------------------------------------------------
@@ -104,7 +106,7 @@ CBasePlayer *CTFProjectile_Flare::GetScorer( void )
 //-----------------------------------------------------------------------------
 int	CTFProjectile_Flare::GetDamageType() 
 { 
-	int iDmgType = DMG_IGNITE;
+	int iDmgType = BaseClass::GetDamageType();
 	if ( m_bCritical )
 	{
 		iDmgType |= DMG_CRITICAL;
@@ -169,8 +171,14 @@ void CTFProjectile_Flare::Explode( trace_t *pTrace, CBaseEntity *pOther )
 	if ( pPlayer )
 	{
 		// Hit player, do damage.
-		CTakeDamageInfo info( this, pAttacker, m_hLauncher, 10, DMG_IGNITE, TF_DMG_CUSTOM_BURNING );
-		info.SetReportedPosition( GetScorer()->GetAbsOrigin() );
+		if ( pPlayer->m_Shared.InCond( TF_COND_BURNING ) )
+		{
+			// Jeez, hardcoding this doesn't seem like a good idea.
+			m_bCritical = true;
+		}
+
+		CTakeDamageInfo info( this, pAttacker, m_hLauncher, GetDamage(), GetDamageType(), TF_DMG_CUSTOM_BURNING );
+		info.SetReportedPosition( pAttacker ? pAttacker->GetAbsOrigin() : vec3_origin );
 		pPlayer->TakeDamage( info );
 		
 		CPVSFilter filter( vecOrigin );
@@ -190,7 +198,7 @@ void CTFProjectile_Flare::Explode( trace_t *pTrace, CBaseEntity *pOther )
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
-CTFProjectile_Flare *CTFProjectile_Flare::Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer )
+CTFProjectile_Flare *CTFProjectile_Flare::Create( CBaseEntity *pWeapon, const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CBaseEntity *pScorer )
 {
 	CTFProjectile_Flare *pFlare = static_cast<CTFProjectile_Flare*>( CBaseEntity::CreateNoSpawn( "tf_projectile_flare", vecOrigin, vecAngles, pOwner ) );
 
@@ -202,8 +210,8 @@ CTFProjectile_Flare *CTFProjectile_Flare::Create( const Vector &vecOrigin, const
 		// Set scorer.
 		pFlare->SetScorer( pScorer );
 
-		// Initialize the owner.
-		pFlare->SetOwnerEntity( pOwner );
+		// Set firing weapon.
+		pFlare->SetLauncher( pWeapon );
 
 		// Spawn.
 		DispatchSpawn( pFlare );
@@ -212,7 +220,10 @@ CTFProjectile_Flare *CTFProjectile_Flare::Create( const Vector &vecOrigin, const
 		Vector vecForward, vecRight, vecUp;
 		AngleVectors( vecAngles, &vecForward, &vecRight, &vecUp );
 
-		Vector vecVelocity = vecForward * pFlare->GetProjectileSpeed();
+		float flVelocity = 2000.0f;
+		CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pWeapon, flVelocity, mult_projectile_speed );
+
+		Vector vecVelocity = vecForward * flVelocity;
 		pFlare->SetAbsVelocity( vecVelocity );
 		pFlare->SetupInitialTransmittedGrenadeVelocity( vecVelocity );
 
@@ -238,6 +249,13 @@ void CTFProjectile_Flare::OnDataChanged( DataUpdateType_t updateType )
 	{
 		CreateTrails();		
 	}
+
+	// Watch team changes and change trail accordingly.
+	if ( m_iOldTeamNum && m_iOldTeamNum != m_iTeamNum )
+	{
+		ParticleProp()->StopEmission();
+		CreateTrails();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -248,47 +266,9 @@ void CTFProjectile_Flare::CreateTrails( void )
 	if ( IsDormant() )
 		return;
 
-	if ( m_bCritical )
-	{
-		switch( GetTeamNumber() )
-		{
-		case TF_TEAM_RED:
-			ParticleProp()->Create( "flaregun_trail_crit_red", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_BLUE:
-			ParticleProp()->Create( "flaregun_trail_crit_blue", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_GREEN:
-			ParticleProp()->Create( "flaregun_trail_crit_green", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_YELLOW:
-			ParticleProp()->Create( "flaregun_trail_crit_yellow", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		default:
-			ParticleProp()->Create( "flaregun_trail_crit_red", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		}
-	}
-	else
-	{
-		switch( GetTeamNumber() )
-		{
-		case TF_TEAM_RED:
-			ParticleProp()->Create( "flaregun_trail_red", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_BLUE:
-			ParticleProp()->Create( "flaregun_trail_blue", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_GREEN:
-			ParticleProp()->Create( "flaregun_trail_green", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		case TF_TEAM_YELLOW:
-			ParticleProp()->Create( "flaregun_trail_yellow", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		default:
-			ParticleProp()->Create( "flaregun_trail_red", PATTACH_ABSORIGIN_FOLLOW );
-			break;
-		}
-	}
+	const char *pszFormat = m_bCritical ? "flaregun_trail_crit_%s" : "flaregun_trail_%s";
+	const char *pszEffectName = ConstructTeamParticle( pszFormat, GetTeamNumber(), false );
+
+	ParticleProp()->Create( pszEffectName, PATTACH_ABSORIGIN_FOLLOW );
 }
 #endif

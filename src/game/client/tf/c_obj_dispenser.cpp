@@ -176,32 +176,14 @@ void C_ObjectDispenser::UpdateEffects( void )
 			if ( bHaveEffect )
 				continue;
 
-			const char *pszEffectName;
-			switch (GetTeamNumber())
-			{
-				case TF_TEAM_RED:
-					pszEffectName = "dispenser_heal_red";
-					break;
+			const char *pszEffectName = ConstructTeamParticle( "dispenser_heal_%s", GetTeamNumber() );
+			CNewParticleEffect *pEffect = NULL;
 
-				case TF_TEAM_BLUE:
-					pszEffectName = "dispenser_heal_blue";
-					break;
+			if ( GetObjectFlags() & OF_IS_CART_OBJECT )
+				pEffect = ParticleProp()->Create( pszEffectName, PATTACH_ABSORIGIN_FOLLOW );
+			else
+				pEffect = ParticleProp()->Create( pszEffectName, PATTACH_POINT_FOLLOW, "heal_origin" );
 
-				case TF_TEAM_GREEN:
-					pszEffectName = "dispenser_heal_green";
-					break;
-
-				case TF_TEAM_YELLOW:
-					pszEffectName = "dispenser_heal_yellow";
-					break;
-
-				default:
-					pszEffectName = "dispenser_heal_blue";
-					break;
-
-			}
-
-			CNewParticleEffect *pEffect = ParticleProp()->Create( pszEffectName, PATTACH_POINT_FOLLOW, "heal_origin" );
 			ParticleProp()->AddControlPoint( pEffect, 1, pTarget, PATTACH_ABSORIGIN_FOLLOW, NULL, Vector(0,0,50) );
 
 			int iIndex = m_hHealingTargetEffects.AddToTail();
@@ -302,3 +284,7 @@ void CDispenserControlPanel::OnTickActive( C_BaseObject *pObj, C_TFPlayer *pLoca
 
 	m_pAmmoProgress->SetProgress( flMetal );
 }
+
+
+IMPLEMENT_CLIENTCLASS_DT( C_ObjectCartDispenser, DT_ObjectCartDispenser, CObjectCartDispenser )
+END_RECV_TABLE()

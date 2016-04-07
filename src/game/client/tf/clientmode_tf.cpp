@@ -41,18 +41,18 @@
 #include "tf_hud_menu_engy_build.h"
 #include "tf_hud_menu_engy_destroy.h"
 #include "tf_hud_menu_spy_disguise.h"
-#include "tf_hud_menu_weaponset.h"
 #include "tf_statsummary.h"
 #include "tf_hud_freezepanel.h"
 #include "clienteffectprecachesystem.h"
 #include "glow_outline_effect.h"
+#include "cam_thirdperson.h"
 
 #if defined( _X360 )
 #include "tf_clientscoreboard.h"
 #endif
 
 ConVar default_fov( "default_fov", "75", FCVAR_CHEAT );
-ConVar fov_desired( "fov_desired", "75", FCVAR_ARCHIVE | FCVAR_USERINFO, "Sets the base field-of-view.", true, 75.0, true, 90.0 );
+ConVar fov_desired( "fov_desired", "75", FCVAR_ARCHIVE | FCVAR_USERINFO, "Sets the base field-of-view.", true, 75.0, true, 100.0 );
 
 void HUDMinModeChangedCallBack( IConVar *var, const char *pOldString, float flOldValue )
 {
@@ -116,6 +116,8 @@ void CTFModeManager::LevelInit( const char *newmap )
 	{
 		voice_steal.SetValue( 1 );
 	}
+
+	g_ThirdPersonManager.Init();
 }
 
 void CTFModeManager::LevelShutdown( void )
@@ -131,7 +133,6 @@ ClientModeTFNormal::ClientModeTFNormal()
 	m_pMenuEngyBuild = NULL;
 	m_pMenuEngyDestroy = NULL;
 	m_pMenuSpyDisguise = NULL;
-	m_pMenuWeaponSet = NULL;
 	m_pGameUI = NULL;
 	m_pFreezePanel = NULL;
 
@@ -164,9 +165,6 @@ void ClientModeTFNormal::Init()
 
 	m_pMenuSpyDisguise = ( CHudMenuSpyDisguise * )GET_HUDELEMENT( CHudMenuSpyDisguise );
 	Assert( m_pMenuSpyDisguise );
-
-	m_pMenuWeaponSet = (CHudMenuWeaponSet *)GET_HUDELEMENT(CHudMenuWeaponSet);
-	Assert(m_pMenuWeaponSet);
 
 	m_pFreezePanel = ( CTFFreezePanel * )GET_HUDELEMENT( CTFFreezePanel );
 	Assert( m_pFreezePanel );
@@ -221,6 +219,72 @@ ClientModeTFNormal* GetClientModeTFNormal()
 	Assert( dynamic_cast< ClientModeTFNormal* >( GetClientModeNormal() ) );
 
 	return static_cast< ClientModeTFNormal* >( GetClientModeNormal() );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Fixes some bugs from base class.
+//-----------------------------------------------------------------------------
+void ClientModeTFNormal::OverrideView( CViewSetup *pSetup )
+{
+	QAngle camAngles;
+
+	C_BasePlayer *pPlayer = C_BasePlayer::GetLocalPlayer();
+	if ( !pPlayer )
+		return;
+
+	// Let the player override the view.
+	pPlayer->OverrideView( pSetup );
+
+	if ( ::input->CAM_IsThirdPerson() )
+	{
+		const Vector& cam_ofs = g_ThirdPersonManager.GetCameraOffsetAngles();
+		Vector cam_ofs_distance;
+
+		if ( g_ThirdPersonManager.IsOverridingThirdPerson() )
+		{
+			cam_ofs_distance = g_ThirdPersonManager.GetDesiredCameraOffset();
+		}
+		else
+		{
+			cam_ofs_distance = g_ThirdPersonManager.GetFinalCameraOffset();
+		}
+
+		cam_ofs_distance *= g_ThirdPersonManager.GetDistanceFraction();
+
+		camAngles[PITCH] = cam_ofs[PITCH];
+		camAngles[YAW] = cam_ofs[YAW];
+		camAngles[ROLL] = 0;
+
+		Vector camForward, camRight, camUp;
+
+
+		if ( g_ThirdPersonManager.IsOverridingThirdPerson() == false )
+		{
+			engine->GetViewAngles( camAngles );
+		}
+
+		// get the forward vector
+		AngleVectors( camAngles, &camForward, &camRight, &camUp );
+
+		VectorMA( pSetup->origin, -cam_ofs_distance[0], camForward, pSetup->origin );
+		VectorMA( pSetup->origin, cam_ofs_distance[1], camRight, pSetup->origin );
+		VectorMA( pSetup->origin, cam_ofs_distance[2], camUp, pSetup->origin );
+
+		// Override angles from third person camera
+		VectorCopy( camAngles, pSetup->angles );
+	}
+	else if ( ::input->CAM_IsOrthographic() )
+	{
+		pSetup->m_bOrtho = true;
+		float w, h;
+		::input->CAM_OrthographicSize( w, h );
+		w *= 0.5f;
+		h *= 0.5f;
+		pSetup->m_OrthoLeft = -w;
+		pSetup->m_OrthoTop = -h;
+		pSetup->m_OrthoRight = w;
+		pSetup->m_OrthoBottom = h;
+	}
 }
 
 extern ConVar v_viewmodel_fov;
@@ -327,14 +391,6 @@ int	ClientModeTFNormal::HudElementKeyInput( int down, ButtonCode_t keynum, const
 	if ( m_pMenuSpyDisguise )
 	{
 		if ( !m_pMenuSpyDisguise->HudElementKeyInput( down, keynum, pszCurrentBinding ) )
-		{
-			return 0;
-		}
-	}
-
-	if (m_pMenuWeaponSet)
-	{
-		if (!m_pMenuWeaponSet->HudElementKeyInput(down, keynum, pszCurrentBinding))
 		{
 			return 0;
 		}

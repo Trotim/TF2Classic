@@ -34,8 +34,13 @@ enum
 #define TF_TEAM_AUTOASSIGN (TF_TEAM_COUNT + 1 )
 
 extern const char *g_aTeamNames[TF_TEAM_COUNT];
+extern const char *g_aTeamNamesShort[TF_TEAM_COUNT];
+extern const char *g_aTeamParticleNames[TF_TEAM_COUNT];
 extern color32 g_aTeamColors[TF_TEAM_COUNT];
 extern color32 g_aTeamSkinColors[TF_TEAM_COUNT];
+
+const char *GetTeamParticleName( int iTeam, bool bDeathmatchOverride = false );
+const char *ConstructTeamParticle( const char *pszFormat, int iTeam, bool bDeathmatchOverride = false );
 
 #define CONTENTS_REDTEAM	CONTENTS_TEAM1
 #define CONTENTS_BLUETEAM	CONTENTS_TEAM2
@@ -209,6 +214,14 @@ enum
 	TF_AMMO_COUNT
 };
 
+enum EAmmoSource
+{
+	TF_AMMO_SOURCE_AMMOPACK = 0, // Default, used for ammopacks
+	TF_AMMO_SOURCE_RESUPPLY, // Maybe?
+	TF_AMMO_SOURCE_DISPENSER,
+	TF_AMMO_SOURCE_COUNT
+};
+
 //-----------------------------------------------------------------------------
 // Grenade Launcher mode (for pipebombs).
 //-----------------------------------------------------------------------------
@@ -231,6 +244,30 @@ enum
 	TF_WPN_TYPE_PDA,
 	TF_WPN_TYPE_ITEM1,
 	TF_WPN_TYPE_ITEM2,
+	TF_WPN_TYPE_MELEE_ALLCLASS, // In live tf2 this is equal to 10, however keep it at 8 just in case it screws something else up
+	TF_WPN_TYPE_SECONDARY2,
+	TF_WPN_TYPE_PRIMARY2,
+	TF_WPN_TYPE_COUNT
+};
+
+extern const char *g_AnimSlots[];
+extern const char *g_LoadoutSlots[];
+
+//-----------------------------------------------------------------------------
+// Loadout slots
+//-----------------------------------------------------------------------------
+enum
+{
+	TF_LOADOUT_SLOT_PRIMARY = 0,
+	TF_LOADOUT_SLOT_SECONDARY,
+	TF_LOADOUT_SLOT_MELEE,
+	TF_LOADOUT_SLOT_PDA1,
+	TF_LOADOUT_SLOT_PDA2,
+	TF_LOADOUT_SLOT_BUILDING,
+	TF_LOADOUT_SLOT_HAT,
+	TF_LOADOUT_SLOT_MISC,
+	TF_LOADOUT_SLOT_ACTION,
+	TF_LOADOUT_SLOT_COUNT
 };
 
 extern const char *g_aAmmoNames[];
@@ -320,38 +357,29 @@ enum
 	TF_WEAPON_DISPENSER,
 	TF_WEAPON_INVIS,
 	TF_WEAPON_FLAG, // ADD NEW WEAPONS AFTER THIS
-	TF_WEAPON_SMG_SCOUT,
-	TF_WEAPON_ROCKETLAUNCHERBETA,
-	TF_WEAPON_CYCLOPS,
-	TF_WEAPON_OVERHEALER,
-	TF_WEAPON_FISHWHACKER,
-	TF_WEAPON_SHOTGUN_MEDIC,
 	TF_WEAPON_HUNTERRIFLE,
 	TF_WEAPON_UMBRELLA,
-	TF_WEAPON_KRITZKRIEG,
-	TF_WEAPON_UBERSAW,
 	TF_WEAPON_FLAREGUN,
-	TF_WEAPON_GRENADE_FLARE,
-	TF_WEAPON_STENGUN,
-	TF_WEAPON_DOUBLEBARREL,
-	TF_WEAPON_SIXSHOOTER,
+	TF_WEAPON_HAMMERFISTS,
 	TF_WEAPON_CHAINSAW,
 	TF_WEAPON_HEAVYARTILLERY,
-	TF_WEAPON_HAMMERFISTS,
 
 	TF_WEAPON_COUNT
 };
 
 extern const char *g_aWeaponNames[];
 extern int g_aWeaponDamageTypes[];
+extern const Vector g_vecFixedWpnSpreadPellets[];
 
 int GetWeaponId( const char *pszWeaponName );
 #ifdef GAME_DLL
 int GetWeaponFromDamage( const CTakeDamageInfo &info );
 #endif
 int GetBuildableId( const char *pszBuildableName );
+
 const char *WeaponIdToAlias( int iWeapon );
 const char *WeaponIdToClassname( int iWeapon );
+const char *TranslateWeaponEntForClass( const char *pszName, int iClass );
 
 enum
 {
@@ -361,9 +389,31 @@ enum
 	TF_PROJECTILE_PIPEBOMB,
 	TF_PROJECTILE_PIPEBOMB_REMOTE,
 	TF_PROJECTILE_SYRINGE,
+	TF_PROJECTILE_FLARE,
+	TF_PROJECTILE_JAR,
+	TF_PROJECTILE_ARROW,
+	TF_PROJECTILE_FLAME_ROCKET,
+	TF_PROJECTILE_JAR_MILK,
+	TF_PROJECTILE_HEALING_BOLT,
+	TF_PROJECTILE_ENERGY_BALL,
+	TF_PROJECTILE_ENERGY_RING,
+	TF_PROJECTILE_PIPEBOMB_REMOTE_PRACTICE,
+	TF_PROJECTILE_CLEAVER,
+	TF_PROJECTILE_STICKY_BALL,
+	TF_PROJECTILE_CANNONBALL,
+	TF_PROJECTILE_BUILDING_REPAIR_BOLT,
+	TF_PROJECTILE_FESTITIVE_ARROW,
+	TF_PROJECTILE_THROWABLE,
+	TF_PROJECTILE_SPELLFIREBALL,
+	TF_PROJECTILE_FESTITIVE_URINE,
+	TF_PROJECTILE_FESTITIVE_HEALING_BOLT,
+	TF_PROJECTILE_BREADMONSTER_JARATE,
+	TF_PROJECTILE_BREADMONSTER_MADMILK,
+	TF_PROJECTILE_GRAPPLINGHOOK,
+	TF_PROJECTILE_SENTRY_ROCKET,
+	TF_PROJECTILE_BREAD_MONSTER,
 	TF_PROJECTILE_NAIL,
 	TF_PROJECTILE_DART,
-	TF_PROJECTILE_FLARE,
 
 	TF_NUM_PROJECTILES
 };
@@ -386,6 +436,7 @@ extern const char *g_szProjectileNames[];
 #define TF_BURNING_DMG				3
 
 // disguising
+#define TF_TIME_TO_CHANGE_DISGUISE 0.5
 #define TF_TIME_TO_DISGUISE 2.0
 #define TF_TIME_TO_SHOW_DISGUISED_FINISHED_EFFECT 5.0
 
@@ -520,7 +571,47 @@ enum
 	TF_COND_LAST
 };
 
+extern int condition_to_attribute_translation[];
+
 int ConditionExpiresFast( int nCond );
+
+//-----------------------------------------------------------------------------
+// Mediguns.
+//-----------------------------------------------------------------------------
+enum
+{
+	TF_MEDIGUN_STOCK = 0,
+	TF_MEDIGUN_KRITZKRIEG,
+	TF_MEDIGUN_QUICKFIX,
+	TF_MEDIGUN_VACCINATOR,
+	TF_MEDIGUN_OVERHEALER,
+	TF_MEDIGUN_COUNT
+};
+
+enum medigun_charge_types
+{
+	TF_CHARGE_NONE = -1,
+	TF_CHARGE_INVULNERABLE = 0,
+	TF_CHARGE_CRITBOOSTED,
+	// TODO:
+#if 0
+	TF_CHARGE_MEGAHEAL,
+	TF_CHARGE_BULLET_RESIST,
+	TF_CHARGE_BLAST_RESIST,
+	TF_CHARGE_FIRE_RESIST,
+#endif
+	TF_CHARGE_COUNT
+};
+
+typedef struct
+{
+	int condition_enable;
+	int condition_disable;
+	const char *sound_enable;
+	const char *sound_disable;
+} MedigunEffects_t;
+
+extern MedigunEffects_t g_MedigunEffects[];
 
 //-----------------------------------------------------------------------------
 // TF Player State.
@@ -769,6 +860,10 @@ enum
 	TF_DMG_BUILDING_CARRIED, // 36
 };
 
+#define TF_JUMP_ROCKET	( 1 << 0 )
+#define TF_JUMP_STICKY	( 1 << 1 )
+#define TF_JUMP_OTHER	( 1 << 2 )
+
 enum
 {
 	TF_COLLISIONGROUP_GRENADES = LAST_SHARED_COLLISION_GROUP,
@@ -788,9 +883,9 @@ enum
 #define SENTRYGUN_EYE_OFFSET_LEVEL_1	Vector( 0, 0, 32 )
 #define SENTRYGUN_EYE_OFFSET_LEVEL_2	Vector( 0, 0, 40 )
 #define SENTRYGUN_EYE_OFFSET_LEVEL_3	Vector( 0, 0, 46 )
-#define SENTRYGUN_MAX_SHELLS_1			100
-#define SENTRYGUN_MAX_SHELLS_2			120
-#define SENTRYGUN_MAX_SHELLS_3			144
+#define SENTRYGUN_MAX_SHELLS_1			150
+#define SENTRYGUN_MAX_SHELLS_2			200
+#define SENTRYGUN_MAX_SHELLS_3			200
 #define SENTRYGUN_MAX_ROCKETS			20
 
 // Dispenser's maximum carrying capability
@@ -901,8 +996,9 @@ enum
 {
 	OF_ALLOW_REPEAT_PLACEMENT				= 0x01,
 	OF_MUST_BE_BUILT_ON_ATTACHMENT			= 0x02,
+	OF_IS_CART_OBJECT						= 0x04, //I'm not sure what the exact name is, but live tf2 uses it for the payload bomb dispenser object
 
-	OF_BIT_COUNT	= 2
+	OF_BIT_COUNT	= 4
 };
 
 //--------------------------------------------------------------------------
@@ -992,7 +1088,8 @@ class CHudTexture;
 class CObjectInfo
 {
 public:
-	CObjectInfo( char *pObjectName );	
+	CObjectInfo( char *pObjectName );
+	CObjectInfo( const CObjectInfo& obj ) {}
 	~CObjectInfo();
 
 	// This is initialized by the code and matched with a section in objects.txt
@@ -1121,6 +1218,24 @@ typedef enum
 	NUM_STOCK_NOTIFICATIONS
 } HudNotification_t;
 
+class CTraceFilterIgnorePlayers : public CTraceFilterSimple
+{
+public:
+	// It does have a base, but we'll never network anything below here..
+	DECLARE_CLASS( CTraceFilterIgnorePlayers, CTraceFilterSimple );
+
+	CTraceFilterIgnorePlayers( const IHandleEntity *passentity, int collisionGroup )
+		: CTraceFilterSimple( passentity, collisionGroup )
+	{
+	}
+
+	virtual bool ShouldHitEntity( IHandleEntity *pServerEntity, int contentsMask )
+	{
+		CBaseEntity *pEntity = EntityFromEntityHandle( pServerEntity );
+		return pEntity && !pEntity->IsPlayer();
+	}
+};
+
 // Unused
 #define TF_DEATH_FIRST_BLOOD	0x0010
 #define TF_DEATH_FEIGN_DEATH	0x0020
@@ -1129,5 +1244,8 @@ typedef enum
 
 #define HUD_ALERT_SCRAMBLE_TEAMS 0
 
+#define TF_CAMERA_DIST 64
+#define TF_CAMERA_DIST_RIGHT 30
+#define TF_CAMERA_DIST_UP 0
 
 #endif // TF_SHAREDDEFS_H

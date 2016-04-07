@@ -47,10 +47,29 @@
 #endif
 
 extern ConVar	tf_avoidteammates;
+extern ConVar	tf_avoidteammates_pushaway;
 
 extern ConVar	fraglimit;
 
 extern Vector g_TFClassViewVectors[];
+
+#ifdef GAME_DLL
+class CTFRadiusDamageInfo
+{
+public:
+	CTFRadiusDamageInfo();
+
+	bool	ApplyToEntity( CBaseEntity *pEntity );
+
+public:
+	CTakeDamageInfo info;
+	Vector m_vecSrc;
+	float m_flRadius;
+	float m_flSelfDamageRadius;
+	int m_iClassIgnore;
+	CBaseEntity *m_pEntityIgnore;
+};
+#endif
 
 class CTFGameRulesProxy : public CTeamplayRoundBasedRulesProxy
 {
@@ -74,20 +93,31 @@ public:
 	void	InputSetYellowTeamGoalString(inputdata_t &inputdata);
 	void	InputSetRedTeamRole( inputdata_t &inputdata );
 	void	InputSetBlueTeamRole( inputdata_t &inputdata );
-	void	InputSetGreenTeamRole(inputdata_t &inputdata);
-	void	InputSetYellowTeamRole(inputdata_t &inputdata);
-	void	InputAddRedTeamScore(inputdata_t &inputdata);
-	void	InputAddBlueTeamScore(inputdata_t &inputdata);
-	void	InputAddGreenTeamScore(inputdata_t &inputdata);
-	void	InputAddYellowTeamScore(inputdata_t &inputdata);
+	void	InputSetGreenTeamRole( inputdata_t &inputdata );
+	void	InputSetYellowTeamRole( inputdata_t &inputdata );
+	void	InputAddRedTeamScore( inputdata_t &inputdata );
+	void	InputAddBlueTeamScore( inputdata_t &inputdata );
+	void	InputAddGreenTeamScore( inputdata_t &inputdata );
+	void	InputAddYellowTeamScore( inputdata_t &inputdata );
 
-	void	InputSetRedKothClockActive(inputdata_t &inputdata);
-	void	InputSetBlueKothClockActive(inputdata_t &inputdata);
+	void	InputSetRedKothClockActive( inputdata_t &inputdata );
+	void	InputSetBlueKothClockActive( inputdata_t &inputdata );
+	void	InputSetGreenKothClockActive( inputdata_t &inputdata );
+	void	InputSetYellowKothClockActive( inputdata_t &inputdata );
+
+	void	InputSetCTFCaptureBonusTime( inputdata_t &inputdata );
+
+	void	InputPlayVO( inputdata_t &inputdata );
+	void	InputPlayVORed( inputdata_t &inputdata );
+	void	InputPlayVOBlue( inputdata_t &inputdata );
+	void	InputPlayVOGreen( inputdata_t &inputdata );
+	void	InputPlayVOYellow( inputdata_t &inputdata );
 
 	virtual void Activate();
 
 	int		m_iHud_Type;
 	bool	m_bFourTeamMode;
+	bool	m_bCTF_Overtime;
 
 #endif
 };
@@ -135,12 +165,17 @@ public:
 
 	virtual const unsigned char *GetEncryptionKey( void ) { return (unsigned char *)"E2NcUkG2"; }
 
+	virtual bool	AllowThirdPersonCamera( void );
+
 	virtual float	GetRespawnWaveMaxLength( int iTeam, bool bScaleWithNumPlayers = true );
 
 	virtual bool	ShouldBalanceTeams( void );
 
 	CTeamRoundTimer* GetBlueKothRoundTimer( void ) { return m_hBlueKothTimer.Get(); }
 	CTeamRoundTimer* GetRedKothRoundTimer( void ) { return m_hRedKothTimer.Get(); }
+	CTeamRoundTimer* GetGreenKothRoundTimer( void ) { return m_hGreenKothTimer.Get(); }
+	CTeamRoundTimer* GetYellowKothRoundTimer( void ) { return m_hYellowKothTimer.Get(); }
+
 
 #ifdef GAME_DLL
 public:
@@ -214,6 +249,10 @@ public:
 
 	void			SetBlueKothRoundTimer( CTeamRoundTimer *pTimer ) { m_hBlueKothTimer.Set( pTimer ); }
 	void			SetRedKothRoundTimer( CTeamRoundTimer *pTimer ) { m_hRedKothTimer.Set( pTimer ); }
+	void			SetGreenKothRoundTimer( CTeamRoundTimer *pTimer ) { m_hGreenKothTimer.Set( pTimer ); }
+	void			SetYellowKothRoundTimer( CTeamRoundTimer *pTimer ) { m_hYellowKothTimer.Set( pTimer ); }
+
+	virtual bool	ClientConnected(edict_t *pEntity, const char *pszName, const char *pszAddress, char *reject, int maxrejectlen);
 
 protected:
 	virtual void	InitTeams( void );
@@ -267,6 +306,8 @@ public:
 	virtual bool    IsHalloweenScenario( int iEventType ) { return false; };
 	virtual bool	IsPVEModeActive( void ) { return false; };
 	virtual bool	IsCompetitiveMode( void ){ return m_bCompetitiveMode; };
+	virtual bool	IsInHybridCTF_CPMode( void ){ return m_bPlayingHybrid_CTF_CP; };
+	virtual bool	IsInSpecialDeliveryMode( void ){ return m_bPlayingSpecialDeliveryMode; };
 
 #ifdef CLIENT_DLL
 
@@ -306,6 +347,7 @@ public:
 
 	virtual const char *GetChatFormat( bool bTeamOnly, CBasePlayer *pPlayer );
 	void ClientSettingsChanged( CBasePlayer *pPlayer );
+	virtual void GetTaggedConVarList( KeyValues *pCvarTagList );
 	void ChangePlayerName( CTFPlayer *pPlayer, const char *pszNewName );
 
 	virtual VoiceCommandMenuItem_t *VoiceCommand( CBaseMultiplayerPlayer *pPlayer, int iMenu, int iItem ); 
@@ -329,12 +371,13 @@ public:
 
 	void CalcDominationAndRevenge( CTFPlayer *pAttacker, CTFPlayer *pVictim, bool bIsAssist, int *piDeathFlags );
 
-	const char *GetKillingWeaponName( const CTakeDamageInfo &info, CTFPlayer *pVictim );
+	const char *GetKillingWeaponName( const CTakeDamageInfo &info, CTFPlayer *pVictim, int &iWeaponID );
 	CBasePlayer *GetAssister( CBasePlayer *pVictim, CBasePlayer *pScorer, CBaseEntity *pInflictor );
 	CTFPlayer *GetRecentDamager( CTFPlayer *pVictim, int iDamager, float flMaxElapsed );
 
 	virtual void ClientDisconnected( edict_t *pClient );
 
+	void	RadiusDamage( CTFRadiusDamageInfo &radiusInfo );
 	virtual void  RadiusDamage( const CTakeDamageInfo &info, const Vector &vecSrc, float flRadius, int iClassIgnore, CBaseEntity *pEntityIgnore );
 
 	virtual float FlPlayerFallDamage( CBasePlayer *pPlayer );
@@ -375,6 +418,8 @@ private:
 
 	bool m_bFirstBlood;
 	int	m_iArenaTeamCount;
+
+	KeyValues *m_pAuthData;
 #endif
 
 	CNetworkVar( int, m_nGameType ); // Type of game this map is (CTF, CP)
@@ -386,14 +431,16 @@ private:
 	CNetworkVar( int, m_nHudType );
 	CNetworkVar( bool, m_bPlayingKoth );
 	CNetworkVar( bool, m_bPlayingMedieval );
-	CNetworkVar( bool, m_bPlayingHybrid_CTF_CP );
 	CNetworkVar( bool, m_bPlayingSpecialDeliveryMode );
 	CNetworkVar( bool, m_bPlayingRobotDestructionMode );
 	CNetworkVar( bool, m_bPlayingMannVsMachine );
+	CNetworkVar( bool, m_bPlayingHybrid_CTF_CP );
 	CNetworkVar( bool, m_bCompetitiveMode );
 	CNetworkVar( bool, m_bPowerupMode );
 	CNetworkVar( CHandle<CTeamRoundTimer>, m_hBlueKothTimer );
 	CNetworkVar( CHandle<CTeamRoundTimer>, m_hRedKothTimer );
+	CNetworkVar( CHandle<CTeamRoundTimer>, m_hGreenKothTimer );
+	CNetworkVar( CHandle<CTeamRoundTimer>, m_hYellowKothTimer );
 
 public:
 
@@ -403,6 +450,11 @@ public:
 	int		m_iBirthdayMode;
 
 	CNetworkVar( bool, m_bFourTeamMode );
+
+#ifdef GAME_DLL
+	float	m_flCTFBonusTime;
+#endif
+
 };
 
 //-----------------------------------------------------------------------------
@@ -416,6 +468,10 @@ inline CTFGameRules* TFGameRules()
 
 #ifdef GAME_DLL
 	bool EntityPlacementTest( CBaseEntity *pMainEnt, const Vector &vOrigin, Vector &outPos, bool bDropToGround );
+#endif
+
+#ifdef CLIENT_DLL
+	void AddSubKeyNamed( KeyValues *pKeys, const char *pszName );
 #endif
 
 #endif // TF_GAMERULES_H

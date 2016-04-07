@@ -12,7 +12,7 @@ WeaponData
 	"Range"			"4096"
 	"BulletsPerShot"	"1"
 	"Spread"		"0.04"
-	"TimeFireDelay"		"0.17"
+	"TimeFireDelay"		"0.15"
 	"TimeIdle"		"5.0"
 	"TimeIdleEmpty"		"0.25"
 	"TimeReload"		"0.5"
@@ -47,21 +47,6 @@ WeaponData
 	"MuzzleFlashModel"	"models/effects/muzzleflash/minigunmuzzle.mdl"
 	"MuzzleFlashParticleEffect" "muzzle_pistol"
 	"MuzzleflashModelScale"	".3"
-
-	"animation_replacement_DM"
-	{
-		"ACT_MP_STAND_IDLE"			"ACT_MP_STAND_SECONDARY2"
-		"ACT_MP_CROUCH_IDLE"			"ACT_MP_CROUCH_SECONDARY2"
-		"ACT_MP_RUN"				"ACT_MP_RUN_SECONDARY2"
-		"ACT_MP_AIRWALK"			"ACT_MP_AIRWALK_SECONDARY2"
-		"ACT_MP_CROUCHWALK"			"ACT_MP_CROUCHWALK_SECONDARY2"
-		"ACT_MP_JUMP_START"			"ACT_MP_JUMP_START_SECONDARY2"
-		"ACT_MP_JUMP_FLOAT"			"ACT_MP_JUMP_FLOAT_SECONDARY2"
-		"ACT_MP_JUMP_LAND"			"ACT_MP_JUMP_LAND_SECONDARY2"
-		"ACT_MP_SWIM"				"ACT_MP_SWIM_SECONDARY2"
-		"ACT_MP_ATTACK_STAND_PRIMARYFIRE"	"ACT_MP_ATTACK_STAND_SECONDARY2"
-		"ACT_MP_ATTACK_CROUCH_PRIMARYFIRE"	"ACT_MP_ATTACK_CROUCH_SECONDARY2"
-	}
 
 	// Sounds.
 	// Max of 16 per category (ie. max 16 "single_shot" sounds).

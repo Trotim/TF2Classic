@@ -51,19 +51,23 @@ public:
 	virtual void	SecondaryAttack( void );
 	virtual void	WeaponIdle( void );
 	void			DrainCharge( void );
-	void			AddCharge(void);
+	void			AddCharge( float flAmount );
 	virtual void	WeaponReset( void );
 
 	virtual float	GetTargetRange( void );
 	virtual float	GetStickRange( void );
 	virtual float	GetHealRate( void );
 	virtual bool	AppliesModifier( void ) { return true; }
+	int				GetMedigunType( void );
 
 	virtual int		GetWeaponID( void ) const			{ return TF_WEAPON_MEDIGUN; }
 
 	bool			IsReleasingCharge( void ) { return (m_bChargeRelease && !m_bHolstered); }
+	medigun_charge_types GetChargeType( void );
 
 	CBaseEntity		*GetHealTarget( void ) { return m_hHealingTarget.Get(); }
+
+	const char		*GetHealSound( void );
 
 #if defined( CLIENT_DLL )
 	// Stop all sounds being output.
@@ -129,6 +133,7 @@ protected:
 	bool					m_bUpdateHealingTargets;
 	struct healingtargeteffects_t
 	{
+		EHANDLE				hOwner;
 		C_BaseEntity		*pTarget;
 		CNewParticleEffect	*pEffect;
 	};
@@ -138,6 +143,7 @@ protected:
 	bool					m_bOldChargeRelease;
 
 	CNewParticleEffect	*m_pChargeEffect;
+	EHANDLE				m_hChargeEffectHost;
 	CSoundPatch			*m_pChargedSound;
 #endif
 

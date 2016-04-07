@@ -222,7 +222,10 @@ void CTFPipebombLauncher::LaunchGrenade( void )
 #endif
 
 	// Set next attack times.
-	m_flNextPrimaryAttack = gpGlobals->curtime + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeFireDelay;
+	float flDelay = m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeFireDelay;
+	CALL_ATTRIB_HOOK_FLOAT( flDelay, mult_postfiredelay );
+	m_flNextPrimaryAttack = gpGlobals->curtime + flDelay;
+
 	m_flLastDenySoundTime = gpGlobals->curtime;
 
 	SetWeaponIdleTime( gpGlobals->curtime + SequenceDuration() );
@@ -263,8 +266,11 @@ CBaseEntity *CTFPipebombLauncher::FireProjectile( CTFPlayer *pPlayer )
 	if ( pProjectile )
 	{
 #ifdef GAME_DLL
+		int nMaxPipebombs = TF_WEAPON_PIPEBOMB_COUNT;
+		CALL_ATTRIB_HOOK_INT( nMaxPipebombs, add_max_pipebombs );
+
 		// If we've gone over the max pipebomb count, detonate the oldest
-		if ( m_Pipebombs.Count() >= TF_WEAPON_PIPEBOMB_COUNT )
+		if ( m_Pipebombs.Count() >= nMaxPipebombs )
 		{
 			CTFGrenadePipebombProjectile *pTemp = m_Pipebombs[0];
 			if ( pTemp )
@@ -427,7 +433,6 @@ bool CTFPipebombLauncher::DetonateRemotePipebombs( bool bFizzle )
 				}
 			}
 #ifdef GAME_DLL
-			
 			pTemp->Detonate();
 #endif
 		}

@@ -77,15 +77,16 @@ void CTFAdvModelPanel::SetParticleName(const char* name)
 
 void CTFAdvModelPanel::Update()
 {
-	MDLHandle_t hSelectedMDL = g_pMDLCache->FindMDL(m_BMPResData.m_pszModelName);
-	g_pMDLCache->PreloadModel(hSelectedMDL);
-	SetMDL(hSelectedMDL);
-	//SetMergeMDL(m_BMPResData.m_aAttachModels[0].m_pszModelName);
-	if (m_iAnimationIndex < m_BMPResData.m_aAnimations.Size())
+	MDLHandle_t hSelectedMDL = g_pMDLCache->FindMDL( m_BMPResData.m_pszModelName );
+	g_pMDLCache->PreloadModel( hSelectedMDL );
+	SetMDL( hSelectedMDL );
+
+	if ( m_iAnimationIndex < m_BMPResData.m_aAnimations.Size() )
 	{
-		SetModelAnim(FindAnimByName(m_BMPResData.m_aAnimations[m_iAnimationIndex].m_pszName));
+		SetModelAnim( m_iAnimationIndex );
 	}
-	SetSkin(m_BMPResData.m_nSkin);
+
+	SetSkin( m_BMPResData.m_nSkin );
 }
 
 void CTFAdvModelPanel::OnThink()
@@ -107,7 +108,7 @@ void CTFAdvModelPanel::OnThink()
 		vecPos *= (float)iMaxBounds / 64.0f;
 
 		SetCameraPositionAndAngles(vecPos, angRot);
-		SetModelAnglesAndPosition(QAngle(0.0f, gpGlobals->curtime * 45.0f, 0.0f), vec3_origin);
+		SetModelAnglesAndPosition(m_BMPResData.m_angModelPoseRot + QAngle(0.0f, gpGlobals->curtime * 45.0f, 0.0f), m_BMPResData.m_vecOriginOffset);
 	}
 }
 

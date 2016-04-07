@@ -16,6 +16,7 @@
 #include "tf_weapon_builder.h"
 #include "vguiscreen.h"
 #include "tf_gamerules.h"
+#include "tf_obj_teleporter.h"
 
 extern ConVar tf2_object_hard_limits;
 extern ConVar tf_fastbuild;
@@ -159,9 +160,10 @@ bool CTFWeaponBuilder::Deploy( void )
 
 Activity CTFWeaponBuilder::GetDrawActivity( void )
 {
-	// sapper used to call different draw animations , one when invis and one when not.
-	// now you can go invis *while* deploying, so let's always use the one-handed deploy.
-	if ( GetType() == OBJ_ATTACHMENT_SAPPER )
+	CTFPlayer *pOwner = ToTFPlayer( GetOwner() );
+
+	// Use the one handed sapper deploy if we're invisible.
+	if ( pOwner && GetType() == OBJ_ATTACHMENT_SAPPER && pOwner->m_Shared.InCond( TF_COND_STEALTHED ) )
 	{
 		return ACT_VM_DRAW_DEPLOYED;
 	}
@@ -198,6 +200,13 @@ bool CTFWeaponBuilder::Holster( CBaseCombatWeapon *pSwitchingTo )
 	}
 
 	StopPlacement();
+
+	// Make sure hauling status is cleared.
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( pOwner && pOwner->m_Shared.IsCarryingObject() )
+	{
+		pOwner->m_Shared.SetCarriedObject( NULL );
+	}
 
 	return BaseClass::Holster(pSwitchingTo);
 }
@@ -296,7 +305,33 @@ void CTFWeaponBuilder::PrimaryAttack( void )
 					pOwner->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_GRENADE );
 				}
 
+				// Need to save this for later since StartBuilding will clear m_hObjectBeingBuilt.
+				CBaseObject *pParentObject = m_hObjectBeingBuilt->GetParentObject();
+
 				StartBuilding();
+
+				// Attaching a sapper to a teleporter automatically saps another end.
+				if ( GetType() == OBJ_ATTACHMENT_SAPPER )
+				{
+					CObjectTeleporter *pTeleporter = dynamic_cast<CObjectTeleporter *>( pParentObject );
+
+					if ( pTeleporter )
+					{
+						CObjectTeleporter *pMatch = pTeleporter->GetMatchingTeleporter();
+
+						// If the other end is not already sapped then place a sapper on it.
+						if ( pMatch && !pMatch->IsPlacing() && !pMatch->HasSapper() )
+						{
+							SetCurrentState( BS_PLACING );
+							StartPlacement();
+							if ( m_hObjectBeingBuilt.Get() )
+							{
+								m_hObjectBeingBuilt->UpdateAttachmentPlacement( pMatch );
+								StartBuilding();
+							}
+						}
+					}
+				}
 
 				// Should we switch away?
 				if ( iFlags & OF_ALLOW_REPEAT_PLACEMENT )
@@ -541,7 +576,6 @@ void CTFWeaponBuilder::StartBuilding( void )
 	Assert( pObj );
 
 	pObj->StartBuilding( GetOwner() );
-	pObj->AddSpawnFlags( SF_OBJ_UPGRADABLE );
 
 	m_hObjectBeingBuilt = NULL;
 

@@ -11,10 +11,6 @@
 #include "activitylist.h"
 #include "tf_gamerules.h"
 
-#define IF_ELEMENT_FOUND(dict, str)						\
-		unsigned int index = dict.Find(str);			\
-		if (index < dict.Count())		
-
 //-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
@@ -58,6 +54,9 @@ CTFWeaponInfo::CTFWeaponInfo()
 	m_szExplosionWaterEffect[0] = '\0';
 
 	m_iWeaponType = TF_WPN_TYPE_PRIMARY;
+
+	m_iMaxAmmo = 0;
+	m_iSpawnAmmo = 0;
 }
 
 CTFWeaponInfo::~CTFWeaponInfo()
@@ -86,8 +85,6 @@ void CTFWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_bDrawCrosshair		= pKeyValuesData->GetInt( "DrawCrosshair", 1 ) > 0;
 	m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_iAmmoPerShot			= pKeyValuesData->GetInt( "AmmoPerShot", 1 );
 	m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_bUseRapidFireCrits	= ( pKeyValuesData->GetInt( "UseRapidFireCrits", 0 ) != 0 );
-	m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_iMaxAmmo				= pKeyValuesData->GetInt( "MaxAmmo", 0 );
-	m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_iSpawnAmmo			= pKeyValuesData->GetInt( "SpawnAmmo", 0 );
 
 	m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_iProjectile = TF_PROJECTILE_NONE;
 	const char *pszProjectileType = pKeyValuesData->GetString( "ProjectileType", "projectile_none" );
@@ -116,44 +113,6 @@ void CTFWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	if ( pszBrassModel )
 	{
 		Q_strncpy( m_szBrassModel, pszBrassModel, sizeof( m_szBrassModel ) );
-	}
-
-	// Anim override / Activity replacement
-	for ( KeyValues *pKeyData = pKeyValuesData->GetFirstSubKey(); pKeyData != NULL; pKeyData = pKeyData->GetNextKey() )	//look through whole weapon script file
-	{
-		if ( !Q_stricmp( pKeyData->GetName(), "animation_replacement" ) )	//if we found animation_override
-		{
-			for ( KeyValues *pSubData = pKeyData->GetFirstSubKey(); pSubData != NULL; pSubData = pSubData->GetNextKey() )
-			{     	//look through animation_override node
-				IF_ELEMENT_FOUND( m_AnimationReplacement, pSubData->GetName() )
-				{
-					Q_snprintf( (char*)m_AnimationReplacement.Element(index), sizeof(m_AnimationReplacement.Element(index)), pSubData->GetString() );
-				}
-				else
-				{
-					m_AnimationReplacement.Insert( pSubData->GetName(), strdup( pSubData->GetString() ) );
-				}
-			}
-		}
-	}
-
-	// DM anim override
-	for ( KeyValues *pKeyData = pKeyValuesData->GetFirstSubKey(); pKeyData != NULL; pKeyData = pKeyData->GetNextKey() )	//look through whole weapon script file
-	{
-		if ( !Q_stricmp( pKeyData->GetName(), "animation_replacement_DM" ) )	//if we found animation_override_DM
-		{
-			for ( KeyValues *pSubData = pKeyData->GetFirstSubKey(); pSubData != NULL; pSubData = pSubData->GetNextKey() )
-			{   //look through the animation_override_dm node
-				IF_ELEMENT_FOUND( m_AnimationReplacementDM, pSubData->GetName() )
-				{
-					Q_snprintf( (char*)m_AnimationReplacementDM.Element(index), sizeof(m_AnimationReplacementDM.Element(index)), pSubData->GetString() );
-				}
-				else
-				{
-					m_AnimationReplacementDM.Insert( pSubData->GetName(), strdup( pSubData->GetString() ) );
-				}
-			}
-		}
 	}
 
 	// Secondary fire mode.
@@ -186,37 +145,11 @@ void CTFWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 
 	const char *pszWeaponType = pKeyValuesData->GetString( "WeaponType" );
 
-	if ( !Q_strcmp( pszWeaponType, "primary" ) )
+	int iType = UTIL_StringFieldToInt( pszWeaponType, g_AnimSlots, TF_WPN_TYPE_COUNT );
+
+	if ( iType >= 0 )
 	{
-		m_iWeaponType = TF_WPN_TYPE_PRIMARY;
-	}
-	else if ( !Q_strcmp( pszWeaponType, "secondary" ) )
-	{
-		m_iWeaponType = TF_WPN_TYPE_SECONDARY;
-	}
-	else if ( !Q_strcmp( pszWeaponType, "melee" ) )
-	{
-		m_iWeaponType = TF_WPN_TYPE_MELEE;
-	}
-	else if ( !Q_strcmp( pszWeaponType, "grenade" ) )
-	{
-		m_iWeaponType = TF_WPN_TYPE_GRENADE;
-	}
-	else if ( !Q_strcmp( pszWeaponType, "building" ) )
-	{
-		m_iWeaponType = TF_WPN_TYPE_BUILDING;
-	}
-	else if ( !Q_strcmp( pszWeaponType, "pda" ) )
-	{
-		m_iWeaponType = TF_WPN_TYPE_PDA;
-	}
-	else if (!Q_strcmp(pszWeaponType, "item1"))
-	{
-		m_iWeaponType = TF_WPN_TYPE_ITEM1;
-	}
-	else if (!Q_strcmp(pszWeaponType, "item2"))
-	{
-		m_iWeaponType = TF_WPN_TYPE_ITEM2;
+		m_iWeaponType = iType;
 	}
 
 	// Grenade data.
@@ -291,47 +224,7 @@ void CTFWeaponInfo::Parse( KeyValues *pKeyValuesData, const char *szWeaponName )
 	}
 
 	m_bDontDrop = ( pKeyValuesData->GetInt( "DontDrop", 0 ) > 0 );
-}
 
-Activity CTFWeaponInfo::GetActivityOverride( Activity actOriginalActivity ) const
-{
-	Activity actOverridenActivity = ACT_INVALID;
-
-	if ( TFGameRules() && TFGameRules()->IsDeathmatch() )
-	{
-		for ( unsigned int i = 0; i < m_AnimationReplacementDM.Count(); i++ )
-		{
-			Activity actNewActivity = ACT_INVALID;
-			const char *szActivityString = m_AnimationReplacementDM.GetElementName( i );
-			actNewActivity = (Activity)ActivityList_IndexForName( szActivityString );
-
-			if ( actNewActivity == actOriginalActivity )
-			{
-				szActivityString = m_AnimationReplacementDM.Element( i );
-				actOverridenActivity = (Activity)ActivityList_IndexForName( szActivityString );
-				return actOverridenActivity;
-			}
-		}
-	}
-	else
-	{
-		for ( unsigned int i = 0; i < m_AnimationReplacement.Count(); i++ )
-		{
-			Activity actNewActivity = ACT_INVALID;
-			const char *szActivityString = m_AnimationReplacement.GetElementName( i );
-			actNewActivity = (Activity)ActivityList_IndexForName( szActivityString );
-
-			if ( actNewActivity == actOriginalActivity )
-			{
-				szActivityString = m_AnimationReplacement.Element( i );
-				actOverridenActivity = (Activity)ActivityList_IndexForName( szActivityString );
-				return actOverridenActivity;
-			}
-		}
-	}
-
-	if ( actOverridenActivity == ACT_INVALID )
-		return actOriginalActivity;
-
-	return actOverridenActivity;
+	m_iMaxAmmo = pKeyValuesData->GetInt( "MaxAmmo", 0 );
+	m_iSpawnAmmo = pKeyValuesData->GetInt( "SpawnAmmo", 0 );
 }

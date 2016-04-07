@@ -156,7 +156,7 @@ public:
 	int		GetDisguiseWeaponModelIndex( void ) { return m_iDisguiseWeaponModelIndex; }
 	CTFWeaponInfo *GetDisguiseWeaponInfo( void );
 
-	void	UpdateCritBoostEffect( bool bForceHide );
+	void	UpdateCritBoostEffect( bool bForceHide = false );
 	bool	SetParticleToMercColor( CNewParticleEffect *pParticle );
 #endif
 
@@ -167,10 +167,13 @@ public:
 	void	RecalculateCrits( bool bInstantRemove = false );
 	int		FindHealerIndex( CTFPlayer *pPlayer );
 	EHANDLE	GetFirstHealer();
+	void	HealthKitPickupEffects( int iAmount );
 #endif
 	int		GetNumHealers( void ) { return m_nNumHealers; }
 
-	void	Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon = NULL );
+	void	Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon = NULL, float flFlameDuration = -1.0f );
+
+	void	RecalculatePlayerBodygroups( void );
 
 	// Weapons.
 	CTFWeaponBase *GetActiveTFWeapon() const;
@@ -206,6 +209,9 @@ public:
 	void	SetJumping( bool bJumping );
 	bool    IsAirDashing( void ) { return m_bAirDash; }
 	void    SetAirDash( bool bAirDash );
+	int		GetAirDucks( void ) { return m_nAirDucked; }
+	void	IncrementAirDucks( void );
+	void	ResetAirDucks( void );
 
 	void	DebugPrintConditions( void );
 
@@ -273,11 +279,9 @@ private:
 	int	  GetNumKillsInTime( float flTime );
 
 	// Invulnerable.
-	bool  IsProvidingInvuln( CTFPlayer *pPlayer );
-	void  SetInvulnerable( bool bState, bool bInstant = false );
-	// Kritzkrieg.
-	bool  IsProvidingCrits(CTFPlayer *pPlayer);
-	void  SetCrits(bool bState, bool bInstant = false);
+	medigun_charge_types  GetChargeEffectBeingProvided( CTFPlayer *pPlayer );
+	void  SetChargeEffect( medigun_charge_types chargeType, bool bShouldCharge, bool bInstantRemove, const MedigunEffects_t &chargeEffect, float flRemoveTime, CTFPlayer *pProvider );
+	void  TestAndExpireChargeEffect( medigun_charge_types chargeType );
 #endif
 
 private:
@@ -328,8 +332,9 @@ private:
 	float					m_flHealFraction;	// Store fractional health amounts
 	float					m_flDisguiseHealFraction;	// Same for disguised healing
 
-	float m_flInvulnerableOffTime;
-	float m_flCritOffTime;
+	float		m_flInvulnerableOffTime;
+	float		m_flChargeOffTime[TF_CHARGE_COUNT];
+	bool		m_bChargeSounds[TF_CHARGE_COUNT];
 #endif
 
 	// Burn handling
@@ -353,13 +358,14 @@ private:
 
 	CNetworkVar( bool, m_bJumping );
 	CNetworkVar( bool, m_bAirDash );
+	CNetworkVar( int, m_nAirDucked );
 
 	CNetworkVar( float, m_flStealthNoAttackExpire );
 	CNetworkVar( float, m_flStealthNextChangeTime );
 
 	CNetworkVar( int, m_iCritMult );
 
-	CNetworkArray(int, m_nStreaks, 3);
+	CNetworkArray( int, m_nStreaks, 3 );
 
 	CNetworkArray( bool, m_bPlayerDominated, MAX_PLAYERS+1 );		// array of state per other player whether player is dominating other players
 	CNetworkArray( bool, m_bPlayerDominatingMe, MAX_PLAYERS+1 );	// array of state per other player whether other players are dominating this player
@@ -379,6 +385,7 @@ private:
 
 	WEAPON_FILE_INFO_HANDLE	m_hDisguiseWeaponInfo;
 
+	CNewParticleEffect *m_pCritEffects[2];
 	EHANDLE m_hCritEffectHost;
 	CSoundPatch *m_pCritSound;
 

@@ -8,6 +8,8 @@
 class CAvatarImagePanel;
 class CTFAdvButton;
 class CTFBlogPanel;
+class CTFServerlistPanel;
+class CTFAdvSlider;
 
 enum MusicStatus
 {
@@ -42,11 +44,16 @@ public:
 	void PlayMusic();
 	void OnNotificationUpdate();
 	void ShowBlogPanel(bool show);
+	void SetServerlistSize(int size);
+	void UpdateServerInfo();
 
 private:
 	CExLabel			*m_pVersionLabel;
 	CTFAdvButton		*m_pNotificationButton;
-	CAvatarImagePanel	*m_pProfileAvatar;
+	CAvatarImagePanel	*m_pProfileAvatar; 
+	vgui::ImagePanel	*m_pFakeBGImage;
+
+	int					m_iShowFakeIntro;
 
 	char				m_pzMusicLink[64];	
 	int					m_nSongGuid;
@@ -55,6 +62,7 @@ private:
 
 	CSteamID			m_SteamID;
 	CTFBlogPanel		*m_pBlogPanel;
+	CTFServerlistPanel	*m_pServerlistPanel;
 };
 
 
@@ -71,6 +79,33 @@ public:
 
 private:
 	vgui::HTML			*m_pHTMLPanel;
+};
+
+class CTFServerlistPanel : public CTFMenuPanelBase
+{
+	DECLARE_CLASS_SIMPLE(CTFServerlistPanel, CTFMenuPanelBase);
+
+public:
+	CTFServerlistPanel(vgui::Panel* parent, const char *panelName);
+	virtual ~CTFServerlistPanel();
+	void PerformLayout();
+	void ApplySchemeSettings(vgui::IScheme *pScheme);
+	void SetServerlistSize(int size);
+	void UpdateServerInfo();
+	void OnThink();
+	void OnCommand(const char* command);
+
+private:
+	static bool ServerSortFunc(vgui::SectionedListPanel *list, int itemID1, int itemID2);
+	vgui::SectionedListPanel	*m_pServerList;
+	CTFAdvButton				*m_pConnectButton;
+	CTFAdvSlider				*m_pListSlider;
+	CPanelAnimationVarAliasType(int, m_iServerWidth, "server_width", "35", "proportional_int");
+	CPanelAnimationVarAliasType(int, m_iPlayersWidth, "players_width", "35", "proportional_int");
+	CPanelAnimationVarAliasType(int, m_iPingWidth, "ping_width", "23", "proportional_int");
+	CPanelAnimationVarAliasType(int, m_iMapWidth, "map_width", "23", "proportional_int");
+	CPanelAnimationVarAliasType(int, m_iScrollWidth, "scroll_width", "23", "proportional_int");
+	int		m_iSize;
 };
 
 #endif // TFMAINMENUPANEL_H

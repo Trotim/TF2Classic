@@ -22,6 +22,7 @@
 #include "c_playerattachedmodel.h"
 #include "iinput.h"
 #include "tf_weapon_medigun.h"
+#include "ihasattributes.h"
 
 class C_MuzzleFlashModel;
 class C_BaseObject;
@@ -29,15 +30,17 @@ class C_BaseObject;
 extern ConVar tf_medigun_autoheal;
 extern ConVar cl_autorezoom;
 extern ConVar cl_autoreload;
+extern ConVar cl_flipviewmodels;
 
 extern ConVar tf2c_setmerccolor_r;
 extern ConVar tf2c_setmerccolor_g;
 extern ConVar tf2c_setmerccolor_b;
+extern ConVar tf2c_setmercparticle;
 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-class C_TFPlayer : public C_BasePlayer
+class C_TFPlayer : public C_BasePlayer, public IHasAttributes
 {
 public:
 
@@ -78,6 +81,7 @@ public:
 
 	virtual void Simulate( void );
 	virtual void FireEvent( const Vector& origin, const QAngle& angles, int event, const char *options );
+	virtual void PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force );
 
 	void LoadInventory(void);
 	void EditInventory(int iSlot, int iWeapon);
@@ -125,6 +129,8 @@ public:
 	bool			StartGestureSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget );
 	void			TurnOnTauntCam( void );
 	void			TurnOffTauntCam( void );
+	bool			InTauntCam( void ) { return m_bWasTaunting; }
+	virtual void	ThirdPersonSwitch( bool bThirdperson );
 
 	virtual void	InitPhonemeMappings();
 
@@ -184,6 +190,7 @@ public:
 	bool			GetMedigunAutoHeal( void ){ return tf_medigun_autoheal.GetBool(); }
 	bool			ShouldAutoRezoom( void ){ return cl_autorezoom.GetBool(); }
 	bool			ShouldAutoReload( void ){ return cl_autoreload.GetBool(); }
+	bool			ShouldFlipViewModel( void ) { return cl_flipviewmodels.GetBool(); }
 
 public:
 	// Shared functions
@@ -191,6 +198,7 @@ public:
 	bool			HasItem( void );					// Currently can have only one item at a time.
 	void			SetItem( C_TFItem *pItem );
 	C_TFItem		*GetItem( void );
+	bool			IsAllowedToPickUpFlag( void );
 	bool			HasTheFlag( void );
 	float			GetCritMult( void ) { return m_Shared.GetCritMult(); }
 
@@ -209,12 +217,19 @@ public:
 	CTFWeaponBase		*Weapon_GetWeaponByType( int iType );
 	virtual bool		Weapon_SlotOccupied( CBaseCombatWeapon *pWeapon );
 	virtual CBaseCombatWeapon *Weapon_GetSlot( int slot ) const;
+	C_EconEntity			*GetEntityForLoadoutSlot( int iSlot );
+	C_EconWearable		*GetWearableForLoadoutSlot( int iSlot );
 
 	virtual void		GetStepSoundVelocities( float *velwalk, float *velrun );
 	virtual void		SetStepSoundTime( stepsoundtimes_t iStepSoundTime, bool bWalking );
 
 	bool	DoClassSpecialSkill( void );
 	bool	CanGoInvisible( void );
+
+	virtual CAttributeManager *GetAttributeManager() { return &m_AttributeManager; }
+	virtual CAttributeContainer *GetAttributeContainer() { return NULL; }
+	virtual CBaseEntity *GetAttributeOwner() { return NULL; }
+	virtual void ReapplyProvision( void ) { /*Do nothing*/ };
 
 public:
 	// Ragdolls.
@@ -266,7 +281,7 @@ private:
 
 public:
 
-	Vector					m_vecPlayerColor;
+	Vector				m_vecPlayerColor;
 
 private:
 
@@ -331,6 +346,8 @@ public:
 	int				m_iOldPlayerClass;	// Used to detect player class changes
 	bool			m_bIsDisplayingNemesisIcon;
 
+	int				m_nForceTauntCam;
+
 	int				m_iSpawnCounter;
 
 	bool			m_bSaveMeParity;
@@ -372,6 +389,8 @@ public:
 
 	bool			m_bUpdatePartyHat;
 	CHandle<C_PlayerAttachedModel>	m_hPartyHat;
+
+	CAttributeManager m_AttributeManager;
 
 private:
 

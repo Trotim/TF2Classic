@@ -47,7 +47,6 @@ if ( object_verbose.GetInt() )									\
 #endif
 
 #define SF_OBJ_INVULNERABLE			0x0002
-#define SF_OBJ_UPGRADABLE			0x0004
 
 // ------------------------------------------------------------------------ //
 // Resupply object that's built by the player
@@ -98,19 +97,21 @@ public:
 	virtual int		GetMaxHealthForCurrentLevel( void );
 	virtual void	StartPlacement( CTFPlayer *pPlayer );
 	void			StopPlacement( void );
-	bool			FindNearestBuildPoint( CBaseEntity *pEntity, CBasePlayer *pBuilder, float &flNearestPoint, Vector &vecNearestBuildPoint );
+	bool			FindNearestBuildPoint( CBaseEntity *pEntity, CBasePlayer *pBuilder, float &flNearestPoint, Vector &vecNearestBuildPoint, bool bIgnoreLOS = false );
 	bool			VerifyCorner( const Vector &vBottomCenter, float xOffset, float yOffset );
 	virtual float	GetNearbyObjectCheckRadius( void ) { return 30.0; }
 	bool			UpdatePlacement( void );
-	bool			UpdateAttachmentPlacement( void );
+	bool			UpdateAttachmentPlacement( CBaseObject *pObject = NULL );
 	bool			IsValidPlacement( void ) const;
 	bool			EstimateValidBuildPos( void );
 
 	bool			CalculatePlacementPos( void );
 	virtual bool	IsPlacementPosValid( void );
-	bool			FindSnapToBuildPos( void );
+	bool			FindSnapToBuildPos( CBaseObject *pObject = NULL );
 
 	void			ReattachChildren( void );
+
+	virtual void	InitializeMapPlacedObject( void );
 	
 	// I've finished building the specified object on the specified build point
 	virtual int		FindObjectOnBuildPoint( CBaseObject *pObject );
@@ -162,6 +163,10 @@ public:
 	virtual bool	IsHostileUpgrade( void )	{ return false; }	// Attaches to enemy buildings
 
 	// Inputs
+	void			InputShow( inputdata_t &inputdata );
+	void			InputHide( inputdata_t &inputdata );
+	void			InputEnable( inputdata_t &inputdata );
+	void			InputDisable( inputdata_t &inputdata );
 	void			InputSetHealth( inputdata_t &inputdata );
 	void			InputAddHealth( inputdata_t &inputdata );
 	void			InputRemoveHealth( inputdata_t &inputdata );

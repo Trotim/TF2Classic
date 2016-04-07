@@ -30,9 +30,7 @@ CTFDroppedWeapon::CTFDroppedWeapon()
 //-----------------------------------------------------------------------------
 void CTFDroppedWeapon::Spawn( void )
 {
-	m_pWeaponInfo = GetTFWeaponInfo( m_nWeaponID );
-
-	m_iMaxAmmo = m_pWeaponInfo->m_WeaponData[TF_WEAPON_PRIMARY_MODE].m_iMaxAmmo;
+	Assert( m_pWeaponInfo );
 
 	SetModel( STRING( GetModelName() ) );
 	AddSpawnFlags( SF_NORESPAWN );
@@ -57,20 +55,22 @@ void CTFDroppedWeapon::Spawn( void )
 
 void CTFDroppedWeapon::RemovalThink( void )
 {
-	// Remove entity after 15 seconds
 	if ( gpGlobals->curtime > m_flRemoveTime )
 		UTIL_Remove( this );
 
 	SetNextThink( gpGlobals->curtime + 1.5f );
 }
 
-CTFDroppedWeapon *CTFDroppedWeapon::Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, const char *pszModelName, unsigned int nWeaponID )
+CTFDroppedWeapon *CTFDroppedWeapon::Create( const Vector &vecOrigin, const QAngle &vecAngles, CBaseEntity *pOwner, CTFWeaponBase *pWeapon )
 {
 	CTFDroppedWeapon *pDroppedWeapon = static_cast<CTFDroppedWeapon*>( CBaseAnimating::CreateNoSpawn( "tf_dropped_weapon", vecOrigin, vecAngles, pOwner ) );
 	if ( pDroppedWeapon )
 	{
-		pDroppedWeapon->SetModelName( AllocPooledString( pszModelName ) );
-		pDroppedWeapon->SetWeaponID( nWeaponID );
+		pDroppedWeapon->SetModelName( pWeapon->GetModelName() );
+		pDroppedWeapon->SetItem( pWeapon->GetItem() );
+		WEAPON_FILE_INFO_HANDLE	hWpnInfo = LookupWeaponInfoSlot( pWeapon->GetClassname() );
+		pDroppedWeapon->m_pWeaponInfo = static_cast<CTFWeaponInfo*>( GetFileWeaponInfoFromHandle( hWpnInfo ) );
+
 		DispatchSpawn( pDroppedWeapon );
 	}
 
@@ -105,7 +105,7 @@ bool CTFDroppedWeapon::MyTouch( CBasePlayer *pPlayer )
 {
 	bool bSuccess = false;
 
-	CTFPlayer *pTFPlayer = dynamic_cast<CTFPlayer*>( pPlayer );
+	CTFPlayer *pTFPlayer = dynamic_cast<CTFPlayer *>( pPlayer );
 
 	if ( ValidTouch( pTFPlayer ) && pTFPlayer->IsPlayerClass( TF_CLASS_MERCENARY ) )
 	{
@@ -113,24 +113,24 @@ bool CTFDroppedWeapon::MyTouch( CBasePlayer *pPlayer )
 		SetThink( NULL );
 
 #ifndef DM_WEAPON_BUCKET
-		CTFWeaponBase *pWeapon = (CTFWeaponBase *)pTFPlayer->Weapon_GetSlot( m_pWeaponInfo->iSlot );
-		const char *pszWeaponName = WeaponIdToClassname( m_nWeaponID );
+		int iSlot = m_Item.GetStaticData()->GetLoadoutSlot( TF_CLASS_MERCENARY );
+		CTFWeaponBase *pWeapon = (CTFWeaponBase *)pTFPlayer->GetEntityForLoadoutSlot( iSlot );
+		const char *pszWeaponName = m_Item.GetEntityName();
 		int iAmmoType = m_pWeaponInfo->iAmmoType;
 
 		if ( pWeapon )
 		{
-			if ( pWeapon->GetWeaponID() == m_nWeaponID )
+			if ( pWeapon->GetItemID() == m_Item.GetItemDefIndex() )
 			{
 				// Give however many ammo we have
-				if ( pTFPlayer->GiveAmmo( m_iAmmo, GetTFWeaponInfo( m_nWeaponID )->iAmmoType ) )
+				if ( pTFPlayer->GiveAmmo( m_iAmmo, iAmmoType, true, TF_AMMO_SOURCE_AMMOPACK ) )
 					bSuccess = true;
 			}
-			else if ( !(pTFPlayer->m_nButtons & IN_ATTACK) && ( pTFPlayer->m_nButtons & IN_USE ) )
+			else if ( !(pTFPlayer->m_nButtons & IN_ATTACK) && ( pTFPlayer->m_nButtons & IN_USE ) ) // Check Use button
 			{
 				// Drop a usable weapon
 				pTFPlayer->DropWeapon( pWeapon );
 
-				// Check Use button
 				if ( pWeapon == pTFPlayer->GetActiveTFWeapon() )
 				{
 					pWeapon->Holster();
@@ -141,7 +141,7 @@ bool CTFDroppedWeapon::MyTouch( CBasePlayer *pPlayer )
 			}
 			else
 			{
-				pTFPlayer->m_Shared.SetDesiredWeaponIndex( m_nWeaponID );
+				pTFPlayer->m_Shared.SetDesiredWeaponIndex( m_Item.GetItemDefIndex() );
 			}
 		}
 #else
@@ -155,7 +155,7 @@ bool CTFDroppedWeapon::MyTouch( CBasePlayer *pPlayer )
 
 		if ( !pWeapon )
 		{
-			CTFWeaponBase *pNewWeapon = (CTFWeaponBase *)pTFPlayer->GiveNamedItem( pszWeaponName );
+			CTFWeaponBase *pNewWeapon = (CTFWeaponBase *)pTFPlayer->GiveNamedItem( pszWeaponName, 0, &m_Item );
 			if ( pNewWeapon )
 			{
 				pPlayer->SetAmmoCount( m_iAmmo, iAmmoType );
@@ -166,7 +166,7 @@ bool CTFDroppedWeapon::MyTouch( CBasePlayer *pPlayer )
 					// weapons for faster reload.
 					pNewWeapon->m_iClip1 = m_iClip;
 				}
-				pTFPlayer->m_Shared.SetDesiredWeaponIndex( TF_WEAPON_NONE );
+				pTFPlayer->m_Shared.SetDesiredWeaponIndex( -1 );
 				bSuccess = true;
 			}
 		}
@@ -179,6 +179,8 @@ bool CTFDroppedWeapon::MyTouch( CBasePlayer *pPlayer )
 			UserMessageBegin( user, "ItemPickup" );
 			WRITE_STRING( GetClassname() );
 			MessageEnd();
+
+			pPlayer->EmitSound( "BaseCombatCharacter.AmmoPickup" );
 		}
 	}
 
@@ -192,7 +194,7 @@ void CTFDroppedWeapon::EndTouch( CBaseEntity *pOther )
 	CTFPlayer *pTFPlayer = dynamic_cast<CTFPlayer*>( pOther );
 	if ( pTFPlayer )
 	{
-		pTFPlayer->m_Shared.SetDesiredWeaponIndex( TF_WEAPON_NONE );
+		pTFPlayer->m_Shared.SetDesiredWeaponIndex( -1 );
 		SetThink( &CTFDroppedWeapon::RemovalThink );
 		// Don't remove weapon immediately after player stopped touching it.
 		SetNextThink( gpGlobals->curtime + 3.5f );

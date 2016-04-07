@@ -17,7 +17,6 @@
 #include <vgui_controls/EditablePanel.h>
 #include <vgui_controls/ProgressBar.h>
 #include "tf_weapon_medigun.h"
-#include "tf_weapon_kritzkrieg.h"
 #include <vgui_controls/AnimationController.h>
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -64,6 +63,7 @@ CHudMedicChargeMeter::CHudMedicChargeMeter( const char *pElementName ) : CHudEle
 
 	m_bCharged = false;
 	m_flLastChargeValue = 0;
+	SetDialogVariable("charge", 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -89,17 +89,30 @@ bool CHudMedicChargeMeter::ShouldDraw( void )
 		return false;
 	}
 
-	CTFWeaponBase *pWpn = pPlayer->GetActiveTFWeapon();
+	C_TFWeaponBase *pWpn = pPlayer->GetActiveTFWeapon();
 
 	if ( !pWpn )
 	{
 		return false;
 	}
 
-	if ( pWpn->GetWeaponID() == TF_WEAPON_MEDIGUN 
-		|| pWpn->GetWeaponID() == TF_WEAPON_OVERHEALER
-		|| pWpn->GetWeaponID() == TF_WEAPON_KRITZKRIEG 
-		|| pWpn->GetWeaponID() == TF_WEAPON_UBERSAW )
+	C_WeaponMedigun *pMedigun = pPlayer->GetMedigun();
+
+	if ( !pMedigun )
+	{
+		return false;
+	}
+
+	// Hide the meter if the medigun can't earn uber.
+	float flChargeRate = 1.0f;
+	CALL_ATTRIB_HOOK_FLOAT_ON_OTHER( pMedigun, flChargeRate, mult_medigun_uberchargerate );
+
+	if ( !flChargeRate )
+	{
+		return false;
+	}
+
+	if ( pWpn == pMedigun || pWpn->GetWeaponID() == TF_WEAPON_BONESAW )
 	{
 		return CHudElement::ShouldDraw();
 	}
@@ -117,22 +130,24 @@ void CHudMedicChargeMeter::OnTick( void )
 	if ( !pPlayer )
 		return;
 
-	CWeaponMedigun *pMedigun = ( CWeaponMedigun* ) pPlayer->GetMedigun();
+	C_WeaponMedigun *pMedigun = pPlayer->GetMedigun();
 
 	if ( !pMedigun )
 		return;
 
-	CTFWeaponBase *pActiveWpn = pPlayer->GetActiveTFWeapon();
+	C_TFWeaponBase *pActiveWpn = pPlayer->GetActiveTFWeapon();
 
 	if ( !pActiveWpn )
 		return;
 
-	if ( pPlayer->GetActiveTFWeapon() == pMedigun || pActiveWpn->GetWeaponID() == TF_WEAPON_UBERSAW  )
+	if ( pPlayer->GetActiveTFWeapon() == pMedigun || pActiveWpn->GetWeaponID() == TF_WEAPON_BONESAW )
 	{
 		float flCharge = pMedigun->GetChargeLevel();
 
 		if ( flCharge != m_flLastChargeValue )
 		{
+			SetDialogVariable( "charge", (int)( flCharge * 100 ) );
+
 			if ( m_pChargeMeter )
 			{
 				m_pChargeMeter->SetProgress( flCharge );
